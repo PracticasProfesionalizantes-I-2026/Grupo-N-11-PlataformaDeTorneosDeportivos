@@ -2,4 +2,4 @@
 Integrantes: Serafin Francisco / Milanesio Gianluca
 
 
-Link del Archivo: https://docs.google.com/document/d/1pE-XyK0fzfpx2osK9i9KLFowa9z8ShPmRmssv63lc9o/edit?tab=t.0#heading=h.juznar866po9
+Link del Archivo: https://docs.google.com/document/d/1pE-XyK0fzfpx2osK9i9KLFowa9z8ShPmRmssv63lc9o/edit?tab=t.0
