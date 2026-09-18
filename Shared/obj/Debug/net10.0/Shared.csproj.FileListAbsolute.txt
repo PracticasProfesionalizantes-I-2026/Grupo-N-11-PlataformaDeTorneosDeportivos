@@ -1,0 +1,13 @@
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\bin\Debug\net10.0\Shared.deps.json
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\bin\Debug\net10.0\Shared.dll
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\bin\Debug\net10.0\Shared.pdb
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\Shared.GeneratedMSBuildEditorConfig.editorconfig
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\Shared.AssemblyInfoInputs.cache
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\Shared.AssemblyInfo.cs
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\Shared.csproj.CoreCompileInputs.cache
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\Shared.sourcelink.json
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\Shared.dll
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\refint\Shared.dll
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\Shared.pdb
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\ref\Shared.dll
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\Shared\obj\Debug\net10.0\Shared.csproj.Up2Date

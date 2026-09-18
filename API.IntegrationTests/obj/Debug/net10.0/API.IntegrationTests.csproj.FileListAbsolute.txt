@@ -1,0 +1,6 @@
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.csproj.AssemblyReference.cache
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.GeneratedMSBuildEditorConfig.editorconfig
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.AssemblyInfoInputs.cache
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.AssemblyInfo.cs
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.csproj.CoreCompileInputs.cache
+E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.sourcelink.json
