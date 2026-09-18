@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="API.IntegrationTests/API.IntegrationTests.csproj" />
+  <Project Path="BusinessLogic.Tests/BusinessLogic.Tests.csproj" />
+  <Project Path="BusinessLogic/BusinessLogic.csproj" />
+  <Project Path="DataAccess/DataAccess.csproj" />
+  <Project Path="Shared/Shared.csproj" />
+</Solution>
