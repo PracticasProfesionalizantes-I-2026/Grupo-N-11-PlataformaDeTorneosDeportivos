@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj": {}
+    "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj": {}
   },
   "projects": {
-    "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj": {
+    "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj",
+        "projectUniqueName": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj",
         "projectName": "DataAccess",
-        "projectPath": "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj",
-        "packagesPath": "C:\\Users\\Franco Serafin\\.nuget\\packages\\",
-        "outputPath": "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\obj\\",
+        "projectPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj",
+        "packagesPath": "C:\\Users\\frans\\.nuget\\packages\\",
+        "outputPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Franco Serafin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\frans\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -26,10 +26,11 @@
         },
         "frameworks": {
           "net10.0": {
+            "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {
-              "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
-                "projectPath": "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj"
+              "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
+                "projectPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj"
               }
             }
           }
@@ -44,10 +45,11 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.200"
+        "SdkAnalysisLevel": "10.0.400"
       },
       "frameworks": {
         "net10.0": {
+          "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
             "Microsoft.EntityFrameworkCore": {
@@ -75,7 +77,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -353,17 +355,17 @@
         }
       }
     },
-    "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
+    "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj",
+        "projectUniqueName": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj",
         "projectName": "Shared",
-        "projectPath": "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj",
-        "packagesPath": "C:\\Users\\Franco Serafin\\.nuget\\packages\\",
-        "outputPath": "c:\\PracticaProfe\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\obj\\",
+        "projectPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj",
+        "packagesPath": "C:\\Users\\frans\\.nuget\\packages\\",
+        "outputPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Franco Serafin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\frans\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -375,6 +377,7 @@
         },
         "frameworks": {
           "net10.0": {
+            "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {}
           }
@@ -389,10 +392,11 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.200"
+        "SdkAnalysisLevel": "10.0.400"
       },
       "frameworks": {
         "net10.0": {
+          "framework": "net10.0",
           "targetAlias": "net10.0",
           "imports": [
             "net461",
@@ -410,7 +414,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",

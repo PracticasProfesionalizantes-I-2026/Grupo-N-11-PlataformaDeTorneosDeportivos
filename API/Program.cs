@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using API.Middlewares;
 using DataAccess.Data;
 using DataAccess.Repositories;
+using BusinessLogic.Security;
 using BusinessLogic.Services;
 
 namespace API
@@ -27,11 +28,16 @@ namespace API
             builder.Services.AddScoped<ITorneoRepository, TorneoRepository>();
             builder.Services.AddScoped<IEquipoRepository, EquipoRepository>();
             builder.Services.AddScoped<IJugadorRepository, JugadorRepository>();
+            builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+
+            // DI Security
+            builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
 
             // DI Services
             builder.Services.AddScoped<ITorneoService, TorneoService>();
             builder.Services.AddScoped<IEquipoService, EquipoService>();
             builder.Services.AddScoped<IJugadorService, JugadorService>();
+            builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 
             var app = builder.Build();
 

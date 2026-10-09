@@ -1,0 +1,22 @@
+meta {
+  name: RegisterUsuario
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:5000/api/usuarios/registro
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Franco",
+    "apellido": "Sosa",
+    "dni": "40123456",
+    "email": "franco.sosa@example.com",
+    "telefono": "3511234567",
+    "password": "PasswordSegura123!"
+  }
+}
