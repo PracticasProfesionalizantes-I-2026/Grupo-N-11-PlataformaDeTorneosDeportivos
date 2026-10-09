@@ -18,4 +18,13 @@ namespace Shared.Enums
         InscritoYConfirmado,
         RechazadoObservado
     }
+
+    public enum RolUsuario
+    {
+        Organizador,
+        Capitan,
+        Veedor,
+        Espectador
+    }
 }
+
