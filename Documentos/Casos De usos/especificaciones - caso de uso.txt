@@ -1,0 +1,584 @@
+﻿ESPECIFICACIÓN DE CASO DE USO: CU-01
+* ID y NOMBRE: CU-01: Registrarse en la plataforma (Crear cuenta / "No tengo cuenta")
+* DESCRIPCIÓN: Permite a un nuevo usuario (sea Organizador, Capitán, Veedor o Espectador) crear un perfil en la plataforma completando los datos obligatorios.
+* ACTOR PRINCIPAL: Usuario No Autenticado
+* ACTORES SECUNDARIOS: Servicio de Correo Electrónico (Notificaciones)
+* DISPARADOR (TRIGGER): El usuario hace clic en el botón "Registrarse" o "No tengo cuenta" desde la pantalla de bienvenida/login.
+* PRECONDICIONES:
+   * El usuario no debe haber iniciado sesión en el sistema.
+* FLUJO PRINCIPAL:
+   * El usuario accede al formulario de registro.
+   * El Sistema solicita el Nombre, Apellido, DNI/ID, Correo Electrónico, Teléfono y Contraseña.
+   * El usuario completa los campos obligatorios y presiona "Crear Cuenta".
+   * El Sistema valida la integridad de los datos, confirma que el email/DNI no estén duplicados y registra la cuenta.
+   * El Sistema envía un correo de activación/confirmación y redirige al usuario a la pantalla de inicio de sesión indicando que revise su correo.
+* FLUJOS ALTERNATIVOS:
+   * 1. Usuario o Email duplicado:
+      * a) El Sistema detecta que el DNI o el Email ya existen en la base de datos.
+      * b) El Sistema muestra el mensaje de error: "El correo o DNI ya se encuentra registrado en la plataforma".
+      * c) El Sistema mantiene los datos en el formulario y solicita corregir el campo en conflicto.
+   * 2. Formato de Contraseña Inseguro:
+      * a) La contraseña ingresada no cumple con las reglas mínimas de complejidad (ej. 8 caracteres, números y letras).
+      * b) El Sistema muestra la alerta correspondiente y permanece en el formulario.
+* POSTCONDICIONES:
+   * Se crea el perfil del usuario en estado "Pendiente de Confirmación" o "Activo".
+* REGLAS DE NEGOCIO:
+   * RN-10: El DNI y el Email son de carácter único en toda la base de datos.
+ESPECIFICACIÓN DE CASO DE USO: CU-02
+* ID y NOMBRE: CU-02: Iniciar sesión
+* DESCRIPCIÓN: Permite a un usuario registrado autenticarse en el sistema utilizando su email/DNI y contraseña para acceder a las funcionalidades según su rol asignado.
+* ACTOR PRINCIPAL: Usuario Registrado (Organizador, Veedor, Capitán, etc.)
+* ACTORES SECUNDARIOS: No aplica
+* DISPARADOR (TRIGGER): El usuario presiona el botón "Iniciar Sesión".
+* PRECONDICIONES:
+   * El usuario debe tener una cuenta registrada e identificada en la plataforma.
+* FLUJO PRINCIPAL:
+   * El usuario ingresa a la pantalla de Login.
+   * El Sistema solicita Email/DNI y Contraseña.
+   * El usuario completa los campos y presiona "Ingresar".
+   * El Sistema valida que las credenciales sean correctas.
+   * El Sistema inicia la sesión y redirige al usuario a su panel de control personalizado según su rol (Organizador, Veedor, Capitán).
+* FLUJOS ALTERNATIVOS:
+   * 1. Credenciales Incorrectas:
+      * a) El Sistema verifica que la contraseña o el email no coinciden.
+      * b) El Sistema muestra el mensaje de error: "Usuario o contraseña incorrectos".
+      * c) El Sistema mantiene al usuario en la pantalla de Login.
+   * 2. Cuenta Bloqueada / Inactiva:
+      * a) El Sistema detecta que la cuenta está inhabilitada por sanciones o falta de activación por correo.
+      * b) El Sistema notifica: "Cuenta no verificada o inhabilitada. Verifique su correo o contacte al administrador".
+* POSTCONDICIONES:
+   * El usuario obtiene una sesión activa con los token de permisos de su rol correspondiente.
+ESPECIFICACIÓN DE CASO DE USO: CU-03
+* ID y NOMBRE: CU-03: Recuperar contraseña ("Olvidé mi contraseña")
+* DESCRIPCIÓN: Permite a un usuario restablecer su contraseña mediante un enlace seguro enviado a su casilla de correo electrónico.
+* ACTOR PRINCIPAL: Usuario Registrado
+* ACTORES SECUNDARIOS: Servicio de Correo Electrónico
+* DISPARADOR (TRIGGER): El usuario selecciona la opción "¿Olvidaste tu contraseña?".
+* PRECONDICIONES:
+   * Estar registrado en el sistema previamente.
+* FLUJO PRINCIPAL:
+   * El usuario ingresa su correo electrónico registrado en la pantalla de recuperación.
+   * El usuario presiona "Enviar enlace de recuperación".
+   * El Sistema verifica la existencia del email y genera un token único de recuperación con tiempo de expiración.
+   * El Sistema envía un correo electrónico al usuario con un enlace seguro.
+   * El usuario hace clic en el enlace, es dirigido a una pantalla donde ingresa la nueva contraseña y presiona "Cambiar contraseña".
+   * El Sistema actualiza la contraseña y confirma la operación exitosa.
+* FLUJOS ALTERNATIVOS:
+   * 1. Correo no registrado:
+      * a) El Sistema no encuentra el correo en la base de datos.
+      * b) Por motivos de seguridad, el sistema informa que si el correo existe se enviará un enlace, o muestra "Correo no encontrado".
+   * 2. Token Expirado o Usado:
+      * a) El usuario hace clic en un enlace de recuperación cuya vigencia expiró (ej. mayor a 24 hs).
+      * b) El Sistema notifica: "El enlace de recuperación ha expirado, intenta solicitar uno nuevo".
+* POSTCONDICIONES:
+   * Se actualiza la contraseña del usuario en la base de datos.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-04 
+* ID y NOMBRE: CU-04: Crear y configurar un nuevo torneo
+* DESCRIPCIÓN: Permite al Organizador del sistema dar de alta una nueva competencia deportiva configurando sus parámetros esenciales para la posterior inscripción de equipos.
+* ACTOR PRINCIPAL: Organizador / Administrador
+* ACTORES SECUNDARIOS: No aplica
+* DISPARADOR (TRIGGER): El Organizador selecciona la opción "Crear Torneo" desde su panel de gestión administrativa.
+* PRECONDICIONES:
+   * El usuario debe estar autenticado en la plataforma con el rol de Organizador.
+   * Las disciplinas base (Fútbol, E-Sports, etc.) deben estar dadas de alta en el sistema.
+* FLUJO PRINCIPAL:
+   * El Organizador accede al formulario de creación de torneos desde su panel.
+   * El Sistema muestra los campos de entrada para el Nombre del Torneo, Disciplina, Modalidad (Liga/Eliminación), Cupo Máximo de equipos y Costo de Inscripción.
+   * El Organizador completa la información requerida y presione el botón "Guardar y Publicar".
+   * El Sistema valida que los datos obligatorios estén completos y que el nombre de la competencia no esté repetido.
+   * El Sistema registra el torneo en estado "Abierto para Inscripción" y lo publica en la cartelera general.
+FLUJOS ALTERNATIVOS:
+1. Nombre de torneo duplicado o campos vacíos:
+a_ El Sistema detecta que el nombre ingresado ya existe o que faltan parámetros mandatorios.
+b_ El Sistema muestra el mensaje de error: "Datos incompletos o el nombre del torneo ya está en uso".
+c_ El Sistema mantiene los datos en el formulario y regresa al paso 2 del flujo principal para su corrección.
+2. Configuración de Costo Inválida:
+a_ En el Paso 3, el Organizador marca el torneo como "Pago" pero define un monto menor o igual a cero
+b_ El Sistema muestra el mensaje de error: "El costo debe ser mayor a cero para torneos pagos".
+c_ El Sistema guarda el torneo en estado "Borrador" (oculto al público) y regresa al paso 2 del flujo principal.
+* POSTCONDICIONES:
+   * El sistema genera el registro del nuevo torneo con un ID único en estado "Abierto" y habilita el módulo de inscripciones.
+* REGLAS DE NEGOCIO:
+   * RN-04: El cupo máximo para iniciar un torneo en modalidad de Eliminación Directa (Brackets) debe ser estrictamente potencia de 2 (mínimo 4 equipos).
+   * RN-05: Todo torneo configurado como "Pago" debe validar que la cuenta recaudadora de la administración esté vinculada y activa antes de permitir su publicación.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-05 
+ID y NOMBRE: CU-05: Registrar y dar de alta equipos y listas de jugadores
+DESCRIPCIÓN: Permite a un Capitán registrar su equipo en la plataforma y cargar la lista de buena fe con los datos y la documentación obligatoria de sus jugadores para postularse a un torneo.
+ACTOR PRINCIPAL: Capitán de Equipo
+DISPARADOR (TRIGGER): El Capitán solicita la creación y registro de su equipo desde su panel de usuario.
+PRECONDICIONES:
+1- El Capitán debe poseer una cuenta activa y verificada en el sistema.
+2- El torneo al que desea postularse debe encontrarse con las inscripciones abiertas.
+FLUJO PRINCIPAL:
+1. El Capitán accede a la pantalla de creación de equipos dentro de su panel personalizado.
+2. El Sistema muestra los campos de entrada para el Nombre del Equipo, Logo (opcional) y la grilla de carga para la Lista de Buena Fe (Nombre, Apellido, DNI y foto/deslinde).
+3. El Capitán ingresa los datos requeridos del equipo, añade los miembros de la lista y presiona el botón "Enviar Inscripción".
+4. El Sistema valida que la cantidad de jugadores cumpla con el mínimo requerido para la disciplina del torneo.
+5. El Sistema guarda el equipo, bloquea temporalmente la edición de la lista y lo registra con estado "Pendiente de Validación".
+FLUJOS ALTERNATIVOS:
+* 1. Lista por debajo del mínimo de jugadores:
+a_ El Sistema detecta que la cantidad de integrantes es menor al mínimo reglamentario para la disciplina.
+b_ El Sistema muestra el mensaje de error: "La lista debe contener al menos el número mínimo de jugadores requeridos".
+c_ El Sistema mantiene los campos cargados y regresa al paso 2 del flujo principal.
+* 2. Jugador ya inscrito en el mismo torneo:
+a_ El Sistema detecta mediante el DNI que uno o más jugadores de la lista ya figuran en otro equipo para el mismo torneo.
+b_ El Sistema muestra el mensaje de error: "El jugador con DNI [Número] ya se encuentra inscrito en otro equipo de este torneo".
+c_ El Sistema resalta el campo en conflicto y regresa al paso 2 del flujo principal.
+POSTCONDICIONES:
+* El sistema almacena el registro del equipo ligado al perfil del Capitán y cambia su estado a "Pendiente de Validación".
+REGLAS DE NEGOCIO:
+* RN-02: Un jugador (identificado por su número de DNI) no puede estar inscrito en más de un equipo de forma simultánea dentro de una misma competencia o torneo.
+* RN-03: Las listas de buena fe no podrán ser modificadas por el Capitán una vez enviadas, a menos que reciban una observación o rechazo por parte del Organizador.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-06
+ID y NOMBRE: CU-06: Validar y aprobar/rechazar la inscripción y documentación de los equipos
+DESCRIPCIÓN: Permite al Organizador revisar las solicitudes de inscripción de los equipos, el comprobante de pago y las identidades cargadas en la lista de buena fe para otorgar el alta definitiva en el torneo.
+ACTOR PRINCIPAL: Organizador / Administrador
+ACTORES SECUNDARIOS: Capitán de Equipo (Recibe notificación)
+DISPARADOR (TRIGGER): El Organizador ingresa al listado de solicitudes pendientes dentro de su panel de control.
+PRECONDICIONES:
+* El torneo debe encontrarse en fase de inscripciones activas.
+* El equipo debe haber completado y enviado su formulario (estado "Pendiente de Validación").
+FLUJO PRINCIPAL:
+1. El Organizador selecciona una solicitud de la lista de equipos pendientes.
+2. El Sistema muestra el Nombre del Equipo, el comprobante de pago adjunto y los datos/documentación de la Lista de Buena Fe.
+3. El Organizador verifica visualmente que la información sea correcta y presiona el botón "Aprobar Inscripción".
+4. El Sistema cambia el estado del equipo a "Inscrito y Confirmado" y descuenta una plaza del cupo disponible del torneo.
+5. El Sistema envía una notificación automática al Capitán confirmando su participación.
+FLUJOS ALTERNATIVOS:
+* 1. Rechazo por documentación ilegible o pago inválido:
+a_ El Organizador detecta un error o anomalía en los datos y presiona el botón "Rechazar Inscripción".
+b_ El Sistema solicita de forma obligatoria el ingreso del motivo del rechazo.
+c_ El Organizador escribe la causa y presiona "Confirmar Rechazo".
+d_ El Sistema cambia el estado del equipo a "Rechazado / Observado" y notifica al Capitán con el detalle del motivo para que pueda corregirlo. El flujo finaliza.
+POSTCONDICIONES:
+* Si es aprobado: El equipo queda formalmente habilitado para el fixture y se actualiza el cupo del torneo.
+* Si es rechazado: El cupo se mantiene intacto y se libera la edición de la lista al Capitán.
+REGLAS DE NEGOCIO:
+* RN-06: Ningún equipo puede ser marcado como "Inscrito y Confirmado" si no registra un pago validado por la administración o si el torneo ya alcanzó su cupo máximo de equipos permitidos.
+
+
+
+
+
+
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-07
+* ID y NOMBRE: CU-07: Crear y gestionar usuarios con rol de "Veedor"
+* DESCRIPCIÓN: Permite al Organizador dar de alta, modificar permisos o dar de baja cuentas para veedores o árbitros que tendrán acceso a la planilla digital de carga de partidos.
+* ACTOR PRINCIPAL: Organizador / Administrador
+* ACTORES SECUNDARIOS: Veedor / Árbitro (Recibe credenciales)
+* DISPARADOR (TRIGGER): El Organizador ingresa al apartado "Gestión de Personal/Veedores" dentro de su panel administrativo.
+* PRECONDICIONES:
+   * El Organizador debe estar autenticado.
+* FLUJO PRINCIPAL:
+   * El Organizador selecciona "Nuevo Veedor".
+   * El Sistema solicita Nombre, Apellido, DNI, Email y Torneos/Sedes asignadas.
+   * El Organizador completa la información y presiona "Guardar y Asignar".
+   * El Sistema registra al usuario asignándole el rol "Veedor".
+   * El Sistema envía un correo automático al nuevo veedor con sus credenciales de acceso.
+* FLUJOS ALTERNATIVOS:
+   * 1. Modificación o Desvinculación de Veedor:
+      * a) El Organizador selecciona un veedor existente.
+      * b) Puede cambiar los torneos asignados o seleccionar "Desactivar Cuenta".
+      * c) El Sistema actualiza el estado y bloquea los accesos inmediatos del veedor a la carga de datos del torneo.
+* POSTCONDICIONES:
+   * Queda habilitado/deshabilitado el perfil de Veedor para la carga de partidos.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-08
+* ID y NOMBRE: CU-08: Solicitar generación automática de fixture
+* DESCRIPCIÓN: Interfaz e instrucción donde el Organizador valida el cierre de la fase de inscripción e inicia la orden para que el sistema procese el calendario de partidos según los cupos.
+* ACTOR PRINCIPAL: Organizador / Administrador
+* ACTORES SECUNDARIOS: Sistema (Ejecutante del algoritmo de fixture - CU-16)
+* DISPARADOR (TRIGGER): El Organizador hace clic en "Cerrar Inscripciones y Generar Fixture".
+* PRECONDICIONES:
+   * El torneo debe tener inscripciones abiertas.
+   * La cantidad de equipos inscritos debe alcanzar el mínimo permitido.
+* FLUJO PRINCIPAL:
+   * El Organizador selecciona el torneo desde su panel.
+   * El Sistema muestra la cantidad de equipos confirmados actuales.
+   * El Organizador define reglas de fecha de inicio, horarios y disponibilidad de canchas/servidores.
+   * El Organizador confirma la acción presionando "Iniciar Generación".
+   * El Sistema invoca al caso de uso CU-16: Generar el fixture automático.
+* FLUJOS ALTERNATIVOS:
+   * 1. No se alcanzó el cupo mínimo:
+      * a) El Sistema detecta que la cantidad de equipos confirmados es menor al mínimo reglamentario para crear el torneo.
+      * b) El Sistema cancela el pedido y muestra el error: "No se puede generar el fixture. No se alcanza el mínimo de equipos requeridos".
+* POSTCONDICIONES:
+   * Se cierra la inscripción del torneo y se dispara el proceso de cálculo de partidos.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-09
+* ID y NOMBRE: CU-09: Consultar el cronograma de partidos asignados
+* DESCRIPCIÓN: Permite al Veedor/Árbitro visualizar desde su dispositivo móvil o web la lista de partidos donde ha sido asignado para controlar mesa y cargar incidencias.
+* ACTOR PRINCIPAL: Veedor / Árbitro
+* ACTORES SECUNDARIOS: No aplica
+* DISPARADOR (TRIGGER): El Veedor ingresa a la sección "Mis Partidos Asignados".
+* PRECONDICIONES:
+   * El Veedor debe estar autenticado con rol activo.
+* FLUJO PRINCIPAL:
+   * El Veedor accede a su panel.
+   * El Sistema recupera y despliega la lista cronológica de partidos donde figura asignado.
+   * El Veedor selecciona una fecha o filtro de torneo.
+   * El Sistema muestra los partidos con detalle de: Horario, Cancha/Servidor, Equipos y Estado del Partido (Pendiente, En Progreso, Finalizado).
+* FLUJOS ALTERNATIVOS:
+   * Sin Partidos Asignados:
+      * El Sistema muestra el mensaje: "No posee partidos asignados para la fecha seleccionada".
+* POSTCONDICIONES:
+   * El Veedor accede a la información relevante para iniciar la planilla del partido.
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-10
+* ID y NOMBRE: CU-10: Cargar resultados básicos del partido (Goles o puntos finales)
+* DESCRIPCIÓN: Permite al Veedor o Administrador cargar únicamente el marcador final de un partido de forma rápida para actualizar tablas o llaves.
+* ACTOR PRINCIPAL: Veedor / Árbitro / Organizador
+* ACTORES SECUNDARIOS: Sistema de Brackets / Posiciones
+* DISPARADOR (TRIGGER): El usuario selecciona la opción "Cargar Resultado Final" en un partido del cronograma.
+* PRECONDICIONES:
+   * El partido debe estar en estado "Pendiente" o "En Juego".
+* FLUJO PRINCIPAL:
+   * El Veedor/Organizador abre la tarjeta del partido.
+   * El Sistema muestra los campos numéricos para el marcador del Equipo A y Equipo B.
+   * El usuario ingresa los tantos/goles y presiona "Guardar Resultado".
+   * El Sistema valida que los marcadores sean valores numéricos no negativos.
+   * El Sistema cambia el estado del partido a "Finalizado", actualiza en tiempo real la tabla de posiciones o el cruce de eliminatoria e impacta en la cartelera pública.
+* FLUJOS ALTERNATIVOS:
+   * 1. Empate no permitido en Eliminación Directa (Brackets):
+      * a) El partido pertenece a una llave de eliminación directa y se carga un marcador igualado.
+      * b) El Sistema muestra el mensaje: "Esta modalidad no admite empates. Debe definir el ganador (Penales/Tiempo Extra)".
+      * c) El Sistema despliega los campos adicionales para definir la definición por penales/desempate.
+* POSTCONDICIONES:
+   * El marcador queda registrado, el partido finalizado y se actualizan los standings.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-11
+ID y NOMBRE: CU-11: Registrar incidencias del partido
+DESCRIPCIÓN: Permite al Veedor o Árbitro registrar en tiempo real o al finalizar el encuentro los eventos críticos del partido (goles/puntos, faltas, tarjetas amarillas/rojas o cambios) asociados a los jugadores de las listas oficiales.
+ACTOR PRINCIPAL: Veedor / Árbitro
+ACTORES SECUNDARIOS: Sistema de Brackets / Posiciones (Recibe la actualización)
+DISPARADOR (TRIGGER): El Veedor selecciona la opción "Iniciar Carga de Incidencias" desde su panel móvil de control de partidos.
+PRECONDICIONES:
+* El Veedor debe estar autenticado con los permisos correspondientes para ese encuentro.
+* El partido debe encontrarse en estado "En Progreso" o "Pendiente de Carga".
+* Las listas de buena fe de ambos equipos deben estar aprobadas y cerradas.
+FLUJO PRINCIPAL:
+1. El Veedor accede a la planilla digital del partido asignado.
+2. El Sistema muestra el cronómetro del partido, el marcador actual y los listados de los jugadores habilitados de ambos equipos.
+3. El Veedor selecciona el tipo de incidencia (ej. Tarjeta Roja), el minuto del encuentro y el jugador responsable de la lista desplegable, y presiona "Registrar Incidencia".
+4. El Sistema valida que el jugador no tenga restricciones previas y añade el evento a la línea de tiempo del partido.
+5. El Veedor presiona "Finalizar Partido" y el Sistema guarda el historial completo de incidencias, cambiando el estado del encuentro a "Pendiente de Confirmación".
+FLUJOS ALTERNATIVOS:
+* A. Intento de registro a jugador suspendido/inhabilitado:
+   1. El Sistema detecta que el jugador seleccionado arrastra una sanción histórica en la base de datos que le impedía jugar.
+   2. El Sistema bloquea la acción y muestra el mensaje de error: "El jugador seleccionado se encuentra inhabilitado para este partido".
+   3. El Sistema reporta la anomalía en el acta digital y regresa al paso 2 para que el Veedor verifique la identidad del deportista.
+* B. Pérdida de conectividad a internet (Modo Offline):
+   1. El Sistema detecta que el dispositivo móvil del Veedor perdió la conexión a la red en el predio deportivo.
+   2. El Sistema almacena temporalmente la incidencia de forma local en la memoria caché del navegador/app.
+   3. Al restablecerse la señal, el Sistema sincroniza de forma transparente los datos guardados con el servidor sin alterar la línea de tiempo.
+POSTCONDICIONES:
+* El partido actualiza su marcador e historial de eventos en la base de datos.
+* Se genera el borrador del acta del partido para la validación final.
+REGLAS DE NEGOCIO:
+* RN-07: El registro de una segunda tarjeta amarilla o una tarjeta roja directa a un mismo jugador debe disparar una alerta visual en el sistema y cambiar automáticamente su estado a "Expulsado", impidiendo cargar más incidencias de juego en ese partido.
+ESPECIFICACIÓN DE CASO DE USO: CU-12
+* ID y NOMBRE: CU-12: Consultar el fixture y calendario de partidos del torneo
+* DESCRIPCIÓN: Permite a cualquier usuario público (Capitanes, Jugadores, Espectadores) consultar las fechas, enfrentamientos y horarios planificados.
+* ACTOR PRINCIPAL: Capitán / Jugador / Espectador (Usuarios Públicos)
+* ACTORES SECUNDARIOS: No aplica
+* DISPARADOR (TRIGGER): El usuario ingresa a la sección "Fixture / Calendario" dentro de un torneo.
+* PRECONDICIONES:
+   * El torneo debe tener el fixture generado e introducido públicamente.
+* FLUJO PRINCIPAL:
+   * El usuario selecciona un torneo del listado general.
+   * El usuario hace clic en la pestaña "Fixture".
+   * El Sistema presenta los partidos agrupados por Jornada/Fecha o por Fase de Eliminación.
+   * El usuario puede filtrar por nombre de equipo para ver su calendario específico.
+   * El Sistema muestra los resultados pasados, horarios futuros, lugares y estado del encuentro.
+* FLUJOS ALTERNATIVOS:
+   * Fixture aún no generado:
+      * El Sistema muestra una leyenda: "El fixture de este torneo aún no ha sido publicado por la organización".
+* POSTCONDICIONES:
+   * Operación de solo lectura.
+
+
+
+
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-13
+* ID y NOMBRE: CU-13: Consultar las tablas de posiciones y llaves de competencia (Brackets) en tiempo real
+* DESCRIPCIÓN: Permite a los usuarios consultar las tablas (puntos, PG, PE, PP, GF, GC, Dif) o el diagrama de llaves (eliminatoria) actualizadas automáticamente tras cada resultado.
+* ACTOR PRINCIPAL: Capitán / Jugador / Espectador
+* ACTORES SECUNDARIOS: No aplica
+* DISPARADOR (TRIGGER): El usuario selecciona la opción "Tabla de Posiciones" o "Llaves / Brackets".
+* PRECONDICIONES:
+   * El torneo debe estar en estado "En Desarrollo" o "Finalizado".
+* FLUJO PRINCIPAL:
+   * El usuario navega al torneo deseado.
+   * El Sistema verifica la modalidad (Liga o Eliminación Directa):
+      * Si es Liga: Muestra la tabla de posiciones con los criterios de desempate computados.
+      * Si es Brackets: Muestra el diagrama dinámico con los equipos avanzando ronda tras ronda.
+   * La información se renderiza en tiempo real de forma responsiva.
+* POSTCONDICIONES:
+   * Muestra visual precisa e inmediata del estado de la competencia.
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-14
+* ID y NOMBRE: CU-14: Consultar perfiles estadísticos e historial
+* DESCRIPCIÓN: Permite a cualquier usuario consultar la ficha pública de un jugador o equipo, acumulando su historial de rendimiento, tarjetas, goles/puntos acumulados.
+* ACTOR PRINCIPAL: Capitán / Jugador / Espectador
+* ACTORES SECUNDARIOS: No aplica
+* DISPARADOR (TRIGGER): El usuario hace clic sobre el nombre de un jugador o equipo en la tabla, plantilla o buscador.
+* PRECONDICIONES:
+   * Existencia del jugador/equipo en la base de datos centralizada.
+* FLUJO PRINCIPAL:
+   * El usuario selecciona el perfil del jugador/equipo.
+   * El Sistema recupera los datos acumulados a lo largo de las competencias.
+   * El Sistema muestra:
+      * Perfil de Jugador: Goles/Puntos convertidos, tarjetas amarillas/rojas, faltas, torneos disputados y equipo actual.
+      * Perfil de Equipo: Victorias, derrotas, efectividad, historial de torneos y lista de integrantes.
+* POSTCONDICIONES:
+   * Despliegue de trazabilidad histórica (CV Deportivo)
+ESPECIFICACIÓN DE CASO DE USO: CU-15
+* ID y NOMBRE: CU-15: Visualizar espacios publicitarios y logos de patrocinadores
+* DESCRIPCIÓN: Módulo pasivo del sistema que renderiza banners, logos e imágen de marcas patrocinadoras en la vista pública para generar retorno de inversión a los sponsors.
+* ACTOR PRINCIPAL: Espectador / Usuario Público
+* ACTORES SECUNDARIOS: Patrocinadores (Sponsors)
+* DISPARADOR (TRIGGER): La carga o renderizado de cualquier pantalla pública del torneo (Fixture, Tablas, Perfiles).
+* PRECONDICIONES:
+   * El Organizador debe haber configurado los banners y patrocinadores en la administración del torneo.
+* FLUJO PRINCIPAL:
+   * El usuario navega por las secciones públicas del torneo.
+   * El Sistema carga en los marcos superior, lateral o inferior los banners/logos paramétricos asociados a dicho torneo.
+   * El usuario puede hacer clic sobre una publicidad.
+   * El Sistema contabiliza la impresión/clic y redirige al usuario a la URL externa configurada por el patrocinador en una nueva pestaña.
+* POSTCONDICIONES:
+   * Se registra la métrica de visualización/clic para el panel de métricas del organizador.
+
+
+ESPECIFICACIÓN DE CASO DE USO: CU-16
+ID y NOMBRE: CU-16: Generar el fixture automático
+DESCRIPCIÓN: Permite al Organizador generar de forma automatizada el calendario de partidos y los emparejamientos del torneo (fechas, cruces de zonas o llaves de eliminación directa) utilizando los equipos confirmados.
+ACTOR PRINCIPAL: Organizador / Administrador
+ACTORES SECUNDARIOS: No aplica
+DISPARADOR (TRIGGER): El Organizador presiona el botón "Generar Fixture Automático" desde el panel de configuración del torneo.
+PRECONDICIONES:
+* El torneo debe encontrarse en estado "Inscripciones Cerradas".
+* Debe haber al menos la cantidad mínima de equipos confirmados e inscritos según la modalidad seleccionada.
+FLUJO PRINCIPAL:
+1. El Organizador accede a la sección de programación de partidos del torneo.
+2. El Sistema muestra la cantidad de equipos confirmados y solicita definir la fecha de inicio del torneo y los días/horarios disponibles para los partidos.
+3. El Organizador ingresa los parámetros de fechas y presiona "Procesar Fixture".
+4. El Sistema ejecuta el algoritmo de emparejamiento según la modalidad configurada (Todos contra todos / Algoritmo de Round Robin, o Eliminación Directa / Brackets).
+5. El Sistema despliega la propuesta de calendario (fechas, cruces y horarios) y el Organizador presiona "Publicar Fixture".
+FLUJOS ALTERNATIVOS:
+* 4a. Cantidad impar de equipos en Todos Contra Todos (Liga):
+   1. El Sistema detecta que el número de equipos es impar para la modalidad seleccionada.
+   2. El Sistema recalcula el algoritmo asignando de forma automática una fecha libre o de descanso a un equipo diferente en cada jornada del fixture.
+   3. El Sistema avanza al paso 5 mostrando la advertencia de las fechas libres.
+* 4b. Número de equipos inválido para Eliminación Directa (Brackets):
+   1. El Sistema detecta que la cantidad de equipos confirmados no es potencia de 2 (ej. hay 13 equipos en lugar de 8 o 16).
+   2. El Sistema calcula automáticamente los bypasses necesarios (equipos que pasan de ronda sin jugar en la primera fecha o "byes") para nivelar la llave.
+   3. El Sistema avanza al paso 5 mostrando gráficamente cómo se estructuran las excepciones de la primera ronda.
+POSTCONDICIONES:
+* El torneo cambia su estado a "En Desarrollo".
+* Se generan todos los partidos en estado "Pendiente" y el fixture completo pasa a estar visible de forma pública para todos los usuarios.
+REGLAS DE NEGOCIO:
+* RN-08: Una vez publicado el fixture automático, el sistema bloquea la posibilidad de añadir nuevos equipos al torneo para evitar la alteración de los algoritmos de cruces.
+* RN-09: El algoritmo de asignación horaria debe evitar de forma estricta que un mismo equipo tenga planificado disputar más de un partido en el mismo día calendario, a menos que la modalidad específica de torneo corto lo requiera expresamente.
