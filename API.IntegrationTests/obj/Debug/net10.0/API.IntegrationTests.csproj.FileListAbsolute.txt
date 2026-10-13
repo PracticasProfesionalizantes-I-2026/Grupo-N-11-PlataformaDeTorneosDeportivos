@@ -4,3 +4,11 @@ E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-Plata
 E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.AssemblyInfo.cs
 E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.csproj.CoreCompileInputs.cache
 E:\2do año Desarrollo de software\Practica Profesionalizante I\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.sourcelink.json
+C:\Users\Administrator\Documents\GitHub\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\bin\Debug\net10.0\.msCoverageSourceRootsMapping_API.IntegrationTests
+C:\Users\Administrator\Documents\GitHub\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\bin\Debug\net10.0\CoverletSourceRootsMapping_API.IntegrationTests
+C:\Users\Administrator\Documents\GitHub\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.csproj.AssemblyReference.cache
+C:\Users\Administrator\Documents\GitHub\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Administrator\Documents\GitHub\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.AssemblyInfoInputs.cache
+C:\Users\Administrator\Documents\GitHub\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.AssemblyInfo.cs
+C:\Users\Administrator\Documents\GitHub\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.csproj.CoreCompileInputs.cache
+C:\Users\Administrator\Documents\GitHub\Grupo-N-11-PlataformaDeTorneosDeportivos\API.IntegrationTests\obj\Debug\net10.0\API.IntegrationTests.sourcelink.json

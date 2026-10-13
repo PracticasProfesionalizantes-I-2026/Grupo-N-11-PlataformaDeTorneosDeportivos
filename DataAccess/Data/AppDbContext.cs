@@ -10,6 +10,7 @@ namespace DataAccess.Data
         public DbSet<Torneo> Torneos { get; set; } = null!;
         public DbSet<Equipo> Equipos { get; set; } = null!;
         public DbSet<Jugador> Jugadores { get; set; } = null!;
+        public DbSet<Usuario> Usuarios { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -24,6 +25,14 @@ namespace DataAccess.Data
             modelBuilder.Entity<Torneo>()
                 .Property(t => t.CostoInscripcion)
                 .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => u.Dni)
+                .IsUnique();
+
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
         }
     }
 }

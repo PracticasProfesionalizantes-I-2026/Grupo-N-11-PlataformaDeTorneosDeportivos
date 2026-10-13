@@ -44,6 +44,12 @@ namespace API.Middlewares
                 case BusinessRuleConflictException _:
                     code = HttpStatusCode.Conflict; // 409
                     break;
+                case UnauthorizedException _:
+                    code = HttpStatusCode.Unauthorized; // 401
+                    break;
+                case ForbiddenException _:
+                    code = HttpStatusCode.Forbidden; // 403
+                    break;
                 default:
                     code = HttpStatusCode.InternalServerError; // 500
                     message = "Ha ocurrido un error inesperado en el servidor.";
