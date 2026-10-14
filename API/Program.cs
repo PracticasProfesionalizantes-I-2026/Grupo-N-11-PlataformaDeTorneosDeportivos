@@ -7,6 +7,7 @@ using API.Middlewares;
 using DataAccess.Data;
 using DataAccess.Repositories;
 using BusinessLogic.Services;
+using BusinessLogic.Security;
 
 namespace API
 {
@@ -27,11 +28,14 @@ namespace API
             builder.Services.AddScoped<ITorneoRepository, TorneoRepository>();
             builder.Services.AddScoped<IEquipoRepository, EquipoRepository>();
             builder.Services.AddScoped<IJugadorRepository, JugadorRepository>();
+            builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 
             // DI Services
+            builder.Services.AddScoped<IPasswordHasher, BusinessLogic.Security.PasswordHasher>();
             builder.Services.AddScoped<ITorneoService, TorneoService>();
             builder.Services.AddScoped<IEquipoService, EquipoService>();
             builder.Services.AddScoped<IJugadorService, JugadorService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
 
             var app = builder.Build();
 

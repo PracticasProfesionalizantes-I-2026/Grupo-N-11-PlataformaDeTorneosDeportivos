@@ -51,6 +51,31 @@ namespace DataAccess.Data
                 context.Jugadores.Add(j);
             }
             context.SaveChanges();
+
+            if (!context.Usuarios.Any())
+            {
+                byte[] salt = new byte[16] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+                byte[] hash = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
+                    "Password123!",
+                    salt,
+                    100_000,
+                    System.Security.Cryptography.HashAlgorithmName.SHA256,
+                    32);
+                string passwordHash = $"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}";
+
+                context.Usuarios.Add(new Usuario
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Carlos",
+                    Apellido = "Organizador",
+                    Dni = "12345678",
+                    Email = "organizador@torneos.com",
+                    PasswordHash = passwordHash,
+                    Rol = RolUsuario.Organizador,
+                    Activo = true
+                });
+                context.SaveChanges();
+            }
         }
     }
 }
