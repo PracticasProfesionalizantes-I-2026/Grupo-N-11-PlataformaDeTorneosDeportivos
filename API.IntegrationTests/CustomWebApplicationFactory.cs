@@ -14,12 +14,15 @@ namespace API.IntegrationTests
         {
             builder.ConfigureServices(services =>
             {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
+                var descriptors = services.Where(d =>
+                    d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
+                    d.ServiceType == typeof(DbContextOptions) ||
+                    (d.ServiceType.Namespace != null && d.ServiceType.Namespace.Contains("EntityFrameworkCore"))
+                ).ToList();
 
-                if (descriptor != null)
+                foreach (var d in descriptors)
                 {
-                    services.Remove(descriptor);
+                    services.Remove(d);
                 }
 
                 services.AddDbContext<AppDbContext>(options =>

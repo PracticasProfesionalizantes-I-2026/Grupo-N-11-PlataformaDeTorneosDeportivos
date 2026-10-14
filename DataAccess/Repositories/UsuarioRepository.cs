@@ -13,9 +13,11 @@ namespace DataAccess.Repositories
 
         public async Task<Usuario?> GetByEmailOrDniAsync(string emailOrDni)
         {
+            var clean = emailOrDni.Trim();
+            var cleanLower = clean.ToLowerInvariant();
             return await _dbSet
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Email == emailOrDni || u.Dni == emailOrDni);
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == cleanLower || u.Dni == clean);
         }
     }
 }

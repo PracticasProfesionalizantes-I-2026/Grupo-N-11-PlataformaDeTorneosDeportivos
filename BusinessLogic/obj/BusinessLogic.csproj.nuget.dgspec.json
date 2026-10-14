@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\BusinessLogic.csproj": {}
+    "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\BusinessLogic.csproj": {}
   },
   "projects": {
-    "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\BusinessLogic.csproj": {
+    "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\BusinessLogic.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\BusinessLogic.csproj",
+        "projectUniqueName": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\BusinessLogic.csproj",
         "projectName": "BusinessLogic",
-        "projectPath": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\BusinessLogic.csproj",
-        "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\obj\\",
+        "projectPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\BusinessLogic.csproj",
+        "packagesPath": "C:\\Users\\frans\\.nuget\\packages\\",
+        "outputPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\BusinessLogic\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\frans\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -29,11 +29,11 @@
             "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {
-              "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj": {
-                "projectPath": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj"
+              "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj": {
+                "projectPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj"
               },
-              "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
-                "projectPath": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj"
+              "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
+                "projectPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj"
               }
             }
           }
@@ -80,7 +80,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.402/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -358,17 +358,17 @@
         }
       }
     },
-    "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj": {
+    "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj",
+        "projectUniqueName": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj",
         "projectName": "DataAccess",
-        "projectPath": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj",
-        "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\obj\\",
+        "projectPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\DataAccess.csproj",
+        "packagesPath": "C:\\Users\\frans\\.nuget\\packages\\",
+        "outputPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\DataAccess\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\frans\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -383,8 +383,8 @@
             "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {
-              "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
-                "projectPath": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj"
+              "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
+                "projectPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj"
               }
             }
           }
@@ -431,7 +431,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.402/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -709,17 +709,17 @@
         }
       }
     },
-    "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
+    "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj",
+        "projectUniqueName": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj",
         "projectName": "Shared",
-        "projectPath": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj",
-        "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\Administrator\\Documents\\GitHub\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\obj\\",
+        "projectPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\Shared.csproj",
+        "packagesPath": "C:\\Users\\frans\\.nuget\\packages\\",
+        "outputPath": "E:\\2do año Desarrollo de software\\Practica Profesionalizante I\\Grupo-N-11-PlataformaDeTorneosDeportivos\\Shared\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\frans\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -768,7 +768,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.402/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",

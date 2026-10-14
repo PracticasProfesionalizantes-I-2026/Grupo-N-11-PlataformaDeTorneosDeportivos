@@ -75,6 +75,63 @@ namespace BusinessLogic.Tests
         }
 
         [Fact]
+        public async Task LoginAsync_WithValidDni_ReturnsToken()
+        {
+            // Arrange
+            var dto = new LoginRequestDTO
+            {
+                EmailOrDni = "12345678",
+                Password = "Password123!"
+            };
+
+            var usuario = new Usuario
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Carlos",
+                Apellido = "Organizador",
+                Email = "organizador@torneos.com",
+                Dni = "12345678",
+                PasswordHash = "hash-almacenado",
+                Rol = RolUsuario.Organizador,
+                Activo = true
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByEmailOrDniAsync(dto.EmailOrDni))
+                .ReturnsAsync(usuario);
+
+            _passwordHasherMock.Setup(p => p.VerifyPassword(dto.Password, usuario.PasswordHash))
+                .Returns(true);
+
+            // Act
+            var result = await _authService.LoginAsync(dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.False(string.IsNullOrWhiteSpace(result.Token));
+            Assert.Equal(usuario.Id, result.UsuarioId);
+            Assert.Equal("Carlos Organizador", result.NombreCompleto);
+            Assert.Equal("Organizador", result.Rol);
+        }
+
+        [Fact]
+        public async Task LoginAsync_WithInvalidCredentials_ThrowsUnauthorizedException()
+        {
+            // Arrange
+            var dto = new LoginRequestDTO
+            {
+                EmailOrDni = "inexistente@example.com",
+                Password = "Password123!"
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByEmailOrDniAsync(dto.EmailOrDni))
+                .ReturnsAsync((Usuario?)null);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<UnauthorizedException>(() => _authService.LoginAsync(dto));
+            Assert.Equal("Usuario o contraseña incorrectos.", ex.Message);
+        }
+
+        [Fact]
         public async Task LoginAsync_WithInvalidCredentials_ThrowsUnauthorizedException_WhenUserNotFound()
         {
             // Arrange
