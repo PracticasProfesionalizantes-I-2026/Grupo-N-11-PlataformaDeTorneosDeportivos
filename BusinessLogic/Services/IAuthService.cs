@@ -6,5 +6,7 @@ namespace BusinessLogic.Services
     public interface IAuthService
     {
         Task<LoginResponseDTO> LoginAsync(LoginRequestDTO dto);
+        Task<RecuperarPasswordResponseDTO> RecoverPasswordAsync(RecuperarPasswordRequestDTO dto);
+        Task<ResetPasswordResponseDTO> ResetPasswordAsync(ResetPasswordRequestDTO dto);
     }
 }

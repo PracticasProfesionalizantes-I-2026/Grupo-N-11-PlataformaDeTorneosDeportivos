@@ -8,5 +8,6 @@ namespace DataAccess.Repositories
         Task<Usuario?> GetByEmailOrDniAsync(string emailOrDni);
         Task<Usuario?> GetByEmailAsync(string email);
         Task<Usuario?> GetByDniAsync(string dni);
+        Task<Usuario?> GetByPasswordResetTokenAsync(string token);
     }
 }

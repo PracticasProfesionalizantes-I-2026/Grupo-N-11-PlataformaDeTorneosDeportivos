@@ -67,6 +67,60 @@ namespace BusinessLogic.Services
             };
         }
 
+        public async Task<RecuperarPasswordResponseDTO> RecoverPasswordAsync(RecuperarPasswordRequestDTO dto)
+        {
+            var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
+
+            // Flujo Alternativo 3a: Silencioso si no existe (seguridad)
+            var usuario = await _usuarioRepository.GetByEmailAsync(normalizedEmail);
+            if (usuario == null)
+            {
+                return new RecuperarPasswordResponseDTO
+                {
+                    Mensaje = "Si el correo existe, se enviará un enlace de recuperación."
+                };
+            }
+
+            // Flujo Principal: Generar token de recuperación con expiración a 24 hs
+            var resetToken = Guid.NewGuid().ToString("N");
+            usuario.PasswordResetToken = resetToken;
+            usuario.PasswordResetTokenExpiration = DateTime.UtcNow.AddHours(24);
+
+            await _usuarioRepository.UpdateAsync(usuario);
+
+            return new RecuperarPasswordResponseDTO
+            {
+                Mensaje = "Si el correo existe, se enviará un enlace de recuperación.",
+                Token = resetToken
+            };
+        }
+
+        public async Task<ResetPasswordResponseDTO> ResetPasswordAsync(ResetPasswordRequestDTO dto)
+        {
+            var token = dto.Token.Trim();
+
+            // Flujo Alternativo 7a: Token Expirado o Usado (HTTP 400 Bad Request)
+            var usuario = await _usuarioRepository.GetByPasswordResetTokenAsync(token);
+            if (usuario == null ||
+                !usuario.PasswordResetTokenExpiration.HasValue ||
+                usuario.PasswordResetTokenExpiration.Value < DateTime.UtcNow)
+            {
+                throw new ValidationException("El enlace de recuperación ha expirado, intenta solicitar uno nuevo.");
+            }
+
+            // Flujo Principal: Actualizar contraseña y revocar el token
+            usuario.PasswordHash = _passwordHasher.HashPassword(dto.NewPassword);
+            usuario.PasswordResetToken = null;
+            usuario.PasswordResetTokenExpiration = null;
+
+            await _usuarioRepository.UpdateAsync(usuario);
+
+            return new ResetPasswordResponseDTO
+            {
+                Mensaje = "Contraseña restablecida exitosamente."
+            };
+        }
+
         private string GenerarJwtToken(Usuario usuario, DateTime expiration)
         {
             var secretKey = _configuration["Jwt:SecretKey"] ?? "ClaveSecretaSuperSeguraParaTorneosDeportivos2026";

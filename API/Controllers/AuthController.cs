@@ -22,5 +22,19 @@ namespace API.Controllers
             var response = await _authService.LoginAsync(dto);
             return Ok(response);
         }
+
+        [HttpPost("recuperar-password")]
+        public async Task<IActionResult> RecuperarPassword([FromBody] RecuperarPasswordRequestDTO dto)
+        {
+            var response = await _authService.RecoverPasswordAsync(dto);
+            return Ok(response);
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDTO dto)
+        {
+            var response = await _authService.ResetPasswordAsync(dto);
+            return Ok(response);
+        }
     }
 }
