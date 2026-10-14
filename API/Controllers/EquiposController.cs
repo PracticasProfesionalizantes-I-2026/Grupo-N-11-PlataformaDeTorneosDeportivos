@@ -32,10 +32,15 @@ namespace API.Controllers
         }
 
         [HttpPost("torneos/{torneoId:guid}/equipos")]
-        public async Task<IActionResult> Create(Guid torneoId, [FromBody] EquipoCreateDTO dto)
+        public async Task<IActionResult> CreateEquipo(Guid torneoId, [FromBody] EquipoCreateDTO dto)
         {
+            if (dto == null || !ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             dto.TorneoId = torneoId;
-            var equipo = await _equipoService.CreateAsync(dto);
+            var equipo = await _equipoService.CreateEquipoAsync(torneoId, dto);
             return CreatedAtAction(nameof(GetById), new { id = equipo.Id }, equipo);
         }
 

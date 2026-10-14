@@ -1,12 +1,21 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace Shared.DTOs
 {
     public class JugadorCreateDTO
     {
+        [Required(ErrorMessage = "El nombre del jugador es obligatorio.")]
         public string Nombre { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El apellido del jugador es obligatorio.")]
         public string Apellido { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El DNI es obligatorio.")]
         public string Dni { get; set; } = string.Empty;
+
+        public string? DocumentacionUrl { get; set; }
+
         public Guid EquipoId { get; set; }
     }
 
@@ -16,6 +25,7 @@ namespace Shared.DTOs
         public string Nombre { get; set; } = string.Empty;
         public string Apellido { get; set; } = string.Empty;
         public string Dni { get; set; } = string.Empty;
+        public string? DocumentacionUrl { get; set; }
         public Guid EquipoId { get; set; }
     }
 }

@@ -1,0 +1,50 @@
+meta {
+  name: CreateEquipo
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://localhost:5000/api/torneos/{{torneoId}}/equipos
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Los Halcones FC",
+    "logoUrl": "https://example.com/logo.png",
+    "jugadores": [
+      {
+        "nombre": "Juan",
+        "apellido": "Perez",
+        "dni": "12345678",
+        "documentacionUrl": "https://example.com/doc1.pdf"
+      },
+      {
+        "nombre": "Carlos",
+        "apellido": "Lopez",
+        "dni": "23456789",
+        "documentacionUrl": "https://example.com/doc2.pdf"
+      },
+      {
+        "nombre": "Lucas",
+        "apellido": "Gomez",
+        "dni": "34567890",
+        "documentacionUrl": "https://example.com/doc3.pdf"
+      },
+      {
+        "nombre": "Marcos",
+        "apellido": "Diaz",
+        "dni": "45678901",
+        "documentacionUrl": "https://example.com/doc4.pdf"
+      },
+      {
+        "nombre": "Diego",
+        "apellido": "Romero",
+        "dni": "56789012",
+        "documentacionUrl": "https://example.com/doc5.pdf"
+      }
+    ]
+  }
+}
