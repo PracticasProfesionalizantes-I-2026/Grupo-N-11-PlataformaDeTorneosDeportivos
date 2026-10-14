@@ -1,0 +1,13 @@
+## Visual Studio / .NET Core
+[Bb]in/
+[Oo]bj/
+[Tt]est[Rr]esults/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vscode/
+.idea/
+*.db
+*.db-shm
+*.db-wal

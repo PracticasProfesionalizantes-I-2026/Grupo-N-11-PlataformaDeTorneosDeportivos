@@ -39,6 +39,7 @@
       "API.IntegrationTests/1.0.0": {
         "dependencies": {
           "API": "1.0.0",
+          "BusinessLogic": "1.0.0",
           "DataAccess": "1.0.0",
           "Microsoft.AspNetCore.Mvc.Testing": "10.0.13",
           "Microsoft.EntityFrameworkCore.InMemory": "10.0.13",
