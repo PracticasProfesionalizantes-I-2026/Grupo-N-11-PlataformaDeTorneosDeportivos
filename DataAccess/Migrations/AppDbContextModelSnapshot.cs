@@ -86,6 +86,13 @@ namespace DataAccess.Migrations
                     b.Property<int>("Disciplina")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("EsPago")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Modalidad")
                         .HasColumnType("INTEGER");
 

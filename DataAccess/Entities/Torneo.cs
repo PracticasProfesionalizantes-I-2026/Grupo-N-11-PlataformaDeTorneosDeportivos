@@ -12,6 +12,8 @@ namespace DataAccess.Entities
         public Modalidad Modalidad { get; set; }
         public int CupoMaximo { get; set; }
         public decimal CostoInscripcion { get; set; }
+        public bool EsPago { get; set; }
+        public string Estado { get; set; } = "Abierto para Inscripción";
 
         public ICollection<Equipo> Equipos { get; set; } = new List<Equipo>();
     }

@@ -27,6 +27,8 @@ namespace API
             builder.Services.AddScoped<ITorneoRepository, TorneoRepository>();
             builder.Services.AddScoped<IEquipoRepository, EquipoRepository>();
             builder.Services.AddScoped<IJugadorRepository, JugadorRepository>();
+            builder.Services.AddScoped<IDisciplinaRepository, DisciplinaRepository>();
+            builder.Services.AddScoped<ICuentaRecaudadoraRepository, CuentaRecaudadoraRepository>();
 
             // DI Services
             builder.Services.AddScoped<ITorneoService, TorneoService>();

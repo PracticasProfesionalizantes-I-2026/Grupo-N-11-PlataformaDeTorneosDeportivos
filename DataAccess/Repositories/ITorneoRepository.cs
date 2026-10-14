@@ -7,5 +7,6 @@ namespace DataAccess.Repositories
     public interface ITorneoRepository : IGenericRepository<Torneo>
     {
         Task<IEnumerable<Torneo>> GetTorneosConEquiposAsync();
+        Task<bool> ExistsByNameAsync(string nombre);
     }
 }

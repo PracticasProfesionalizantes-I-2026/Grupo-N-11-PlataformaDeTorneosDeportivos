@@ -35,14 +35,21 @@ namespace API.Middlewares
 
             switch (exception)
             {
+                case DisciplinaNotFoundException _:
                 case NotFoundException _:
                     code = HttpStatusCode.NotFound; // 404
                     break;
+                case CostoInvalidoException _:
                 case ValidationException _:
                     code = HttpStatusCode.BadRequest; // 400
                     break;
+                case TorneoNombreDuplicadoException _:
                 case BusinessRuleConflictException _:
                     code = HttpStatusCode.Conflict; // 409
+                    break;
+                case CupoInvalidoEliminacionException _:
+                case CuentaRecaudadoraInactivaException _:
+                    code = HttpStatusCode.UnprocessableEntity; // 422
                     break;
                 default:
                     code = HttpStatusCode.InternalServerError; // 500
@@ -53,7 +60,7 @@ namespace API.Middlewares
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)code;
 
-            var result = JsonSerializer.Serialize(new { error = message });
+            var result = JsonSerializer.Serialize(new { error = message, message = message });
             return context.Response.WriteAsync(result);
         }
     }
