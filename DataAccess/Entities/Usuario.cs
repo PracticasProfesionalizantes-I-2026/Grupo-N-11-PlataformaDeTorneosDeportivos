@@ -14,6 +14,8 @@ namespace DataAccess.Entities
         public string PasswordHash { get; set; } = string.Empty;
         public RolUsuario Rol { get; set; } = RolUsuario.Capitan;
         public bool Activo { get; set; } = true;
+        public string? SedeAsignada { get; set; }
+        public string? TorneosAsignadosIds { get; set; }
         public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     }
 }

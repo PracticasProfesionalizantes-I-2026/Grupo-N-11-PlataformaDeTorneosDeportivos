@@ -1,0 +1,20 @@
+meta {
+  name: UpdateVeedor
+  type: http
+  seq: 9
+}
+
+put {
+  url: http://localhost:5000/api/veedores/{{veedorId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Roberto Carlos",
+    "apellido": "Gomez",
+    "telefono": "9988776655",
+    "sedeAsignada": "Sede Norte"
+  }
+}

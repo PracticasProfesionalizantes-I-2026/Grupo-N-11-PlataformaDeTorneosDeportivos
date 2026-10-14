@@ -1,0 +1,22 @@
+meta {
+  name: CreateVeedor
+  type: http
+  seq: 8
+}
+
+post {
+  url: http://localhost:5000/api/veedores
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Roberto",
+    "apellido": "Gomez",
+    "dni": "33444555",
+    "email": "veedor.roberto@torneos.com",
+    "telefono": "1122334455",
+    "sedeAsignada": "Cancha Central"
+  }
+}
