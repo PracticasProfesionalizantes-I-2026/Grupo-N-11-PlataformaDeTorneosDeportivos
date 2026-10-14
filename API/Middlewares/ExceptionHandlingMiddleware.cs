@@ -50,6 +50,10 @@ namespace API.Middlewares
                 case ForbiddenException _:
                     code = HttpStatusCode.Forbidden; // 403
                     break;
+                case MinimoJugadoresInsuficienteException _:
+                case PagoRequeridoException _:
+                    code = HttpStatusCode.UnprocessableEntity; // 422
+                    break;
                 default:
                     code = HttpStatusCode.InternalServerError; // 500
                     message = "Ha ocurrido un error inesperado en el servidor.";

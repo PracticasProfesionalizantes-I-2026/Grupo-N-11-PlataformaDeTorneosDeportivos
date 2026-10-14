@@ -1,0 +1,17 @@
+meta {
+  name: RechazarInscripcion
+  type: http
+  seq: 7
+}
+
+patch {
+  url: http://localhost:5000/api/torneos/{{torneoId}}/equipos/{{equipoId}}/rechazar
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "motivoRechazo": "Falta adjuntar fotocopia de DNI de los jugadores 1 y 2."
+  }
+}
