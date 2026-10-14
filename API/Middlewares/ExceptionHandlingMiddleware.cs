@@ -35,6 +35,10 @@ namespace API.Middlewares
 
             switch (exception)
             {
+                case CupoInvalidoEliminacionException _:
+                case CuentaRecaudadoraInactivaException _:
+                    code = HttpStatusCode.UnprocessableEntity; // 422
+                    break;
                 case NotFoundException _:
                     code = HttpStatusCode.NotFound; // 404
                     break;

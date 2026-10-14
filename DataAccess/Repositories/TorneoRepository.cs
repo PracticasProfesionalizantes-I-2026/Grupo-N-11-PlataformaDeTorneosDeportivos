@@ -16,5 +16,11 @@ namespace DataAccess.Repositories
         {
             return await _dbSet.Include(t => t.Equipos).AsNoTracking().ToListAsync();
         }
+
+        public async Task<Torneo?> GetByNombreAsync(string nombre)
+        {
+            var clean = nombre.Trim().ToLower();
+            return await _dbSet.AsNoTracking().FirstOrDefaultAsync(t => t.Nombre.ToLower() == clean);
+        }
     }
 }

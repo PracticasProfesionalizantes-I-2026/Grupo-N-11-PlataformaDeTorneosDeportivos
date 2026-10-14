@@ -32,6 +32,7 @@ namespace API
 
             // DI Services
             builder.Services.AddScoped<IPasswordHasher, BusinessLogic.Security.PasswordHasher>();
+            builder.Services.AddScoped<ICuentaRecaudadoraService, CuentaRecaudadoraService>();
             builder.Services.AddScoped<ITorneoService, TorneoService>();
             builder.Services.AddScoped<IEquipoService, EquipoService>();
             builder.Services.AddScoped<IJugadorService, JugadorService>();

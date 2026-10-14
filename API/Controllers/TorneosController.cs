@@ -32,9 +32,9 @@ namespace API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] TorneoCreateDTO dto)
+        public async Task<IActionResult> CreateTorneo([FromBody] TorneoCreateDTO dto)
         {
-            var torneo = await _torneoService.CreateAsync(dto);
+            var torneo = await _torneoService.CreateTorneoAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = torneo.Id }, torneo);
         }
 
