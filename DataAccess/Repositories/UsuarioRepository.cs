@@ -19,5 +19,19 @@ namespace DataAccess.Repositories
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Email.ToLower() == cleanLower || u.Dni == clean);
         }
+
+        public async Task<Usuario?> GetByEmailAsync(string email)
+        {
+            return await _dbSet
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Email == email);
+        }
+
+        public async Task<Usuario?> GetByDniAsync(string dni)
+        {
+            return await _dbSet
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Dni == dni);
+        }
     }
 }

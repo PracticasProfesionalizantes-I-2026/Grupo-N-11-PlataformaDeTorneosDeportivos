@@ -11,10 +11,12 @@ namespace API.Controllers
     public class TorneosController : ControllerBase
     {
         private readonly ITorneoService _torneoService;
+        private readonly IFixtureService _fixtureService;
 
-        public TorneosController(ITorneoService torneoService)
+        public TorneosController(ITorneoService torneoService, IFixtureService fixtureService)
         {
             _torneoService = torneoService;
+            _fixtureService = fixtureService;
         }
 
         [HttpGet]
@@ -50,6 +52,13 @@ namespace API.Controllers
         {
             await _torneoService.DeleteAsync(id);
             return NoContent();
+        }
+
+        [HttpPost("{id}/generar-fixture")]
+        public async Task<IActionResult> GenerarFixture(Guid id, [FromBody] GenerarFixtureRequestDTO dto)
+        {
+            var response = await _fixtureService.GenerarFixtureAsync(id, dto);
+            return Ok(response);
         }
     }
 }
