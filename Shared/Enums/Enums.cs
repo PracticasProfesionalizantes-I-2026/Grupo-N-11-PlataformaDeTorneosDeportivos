@@ -24,7 +24,8 @@ namespace Shared.Enums
         Organizador,
         Capitan,
         Veedor,
-        Administrador
+        Administrador,
+        Espectador
     }
 }
 
