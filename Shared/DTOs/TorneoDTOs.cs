@@ -29,5 +29,6 @@ namespace Shared.DTOs
         public string Modalidad { get; set; } = string.Empty;
         public int CupoMaximo { get; set; }
         public decimal CostoInscripcion { get; set; }
+        public string Estado { get; set; } = string.Empty;
     }
 }

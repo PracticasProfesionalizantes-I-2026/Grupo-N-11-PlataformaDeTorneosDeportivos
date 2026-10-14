@@ -12,7 +12,9 @@ namespace DataAccess.Entities
         public Modalidad Modalidad { get; set; }
         public int CupoMaximo { get; set; }
         public decimal CostoInscripcion { get; set; }
+        public EstadoTorneo Estado { get; set; } = EstadoTorneo.Abierto;
 
         public ICollection<Equipo> Equipos { get; set; } = new List<Equipo>();
+        public ICollection<Partido> Partidos { get; set; } = new List<Partido>();
     }
 }

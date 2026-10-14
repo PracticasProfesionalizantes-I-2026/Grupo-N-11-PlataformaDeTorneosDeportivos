@@ -1,0 +1,27 @@
+meta {
+  name: GenerarFixture
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://localhost:5000/api/torneos/{{torneoId}}/generar-fixture
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "fechaInicio": "2026-11-01T10:00:00Z",
+    "horarios": [
+      "10:00",
+      "12:00",
+      "15:00",
+      "17:00"
+    ],
+    "sedes": [
+      "Cancha Principal",
+      "Cancha 2"
+    ]
+  }
+}

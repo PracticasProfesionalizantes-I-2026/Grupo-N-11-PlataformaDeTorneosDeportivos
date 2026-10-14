@@ -16,5 +16,13 @@ namespace DataAccess.Repositories
         {
             return await _dbSet.Include(t => t.Equipos).AsNoTracking().ToListAsync();
         }
+
+        public async Task<Torneo?> GetTorneoConEquiposAsync(System.Guid id)
+        {
+            return await _dbSet
+                .Include(t => t.Equipos)
+                .Include(t => t.Partidos)
+                .FirstOrDefaultAsync(t => t.Id == id);
+        }
     }
 }
