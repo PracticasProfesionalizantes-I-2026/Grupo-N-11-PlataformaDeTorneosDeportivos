@@ -27,5 +27,21 @@ namespace Shared.Enums
         Administrador,
         Espectador
     }
+
+    public enum EstadoTorneo
+    {
+        Abierto,
+        InscripcionesCerradas,
+        EnDesarrollo,
+        Finalizado
+    }
+
+    public enum EstadoPartido
+    {
+        Pendiente,
+        EnJuego,
+        Finalizado,
+        Cancelado
+    }
 }
 

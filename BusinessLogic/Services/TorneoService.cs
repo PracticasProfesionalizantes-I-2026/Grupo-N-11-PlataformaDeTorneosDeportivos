@@ -100,7 +100,8 @@ namespace BusinessLogic.Services
                 Disciplina = torneo.Disciplina.ToString(),
                 Modalidad = torneo.Modalidad.ToString(),
                 CupoMaximo = torneo.CupoMaximo,
-                CostoInscripcion = torneo.CostoInscripcion
+                CostoInscripcion = torneo.CostoInscripcion,
+                Estado = torneo.Estado.ToString()
             };
         }
     }
