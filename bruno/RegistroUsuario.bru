@@ -1,0 +1,23 @@
+meta {
+  name: RegistroUsuario
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://localhost:5000/api/usuarios/registro
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Lucas",
+    "apellido": "Fernandez",
+    "dni": "40123456",
+    "email": "lucas.fernandez@torneos.com",
+    "telefono": "1133445566",
+    "password": "Password123!",
+    "rol": "Capitan"
+  }
+}

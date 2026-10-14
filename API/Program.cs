@@ -36,6 +36,7 @@ namespace API
             builder.Services.AddScoped<IEquipoService, EquipoService>();
             builder.Services.AddScoped<IJugadorService, JugadorService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 
             var app = builder.Build();
 
