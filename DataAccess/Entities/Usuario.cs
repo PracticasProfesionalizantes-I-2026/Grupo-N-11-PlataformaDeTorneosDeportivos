@@ -1,0 +1,23 @@
+using System;
+using Shared.Enums;
+
+namespace DataAccess.Entities
+{
+    public class Usuario
+    {
+        public Guid Id { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string Apellido { get; set; } = string.Empty;
+        public string Dni { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? Telefono { get; set; }
+        public string PasswordHash { get; set; } = string.Empty;
+        public RolUsuario Rol { get; set; } = RolUsuario.Capitan;
+        public bool Activo { get; set; } = true;
+        public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+
+        // Propiedades para recuperación de contraseña (CU-03)
+        public string? PasswordResetToken { get; set; }
+        public DateTime? PasswordResetTokenExpiration { get; set; }
+    }
+}

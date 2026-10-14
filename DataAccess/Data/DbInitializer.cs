@@ -51,6 +51,22 @@ namespace DataAccess.Data
                 context.Jugadores.Add(j);
             }
             context.SaveChanges();
+
+            if (!context.Usuarios.Any())
+            {
+                context.Usuarios.Add(new Usuario
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Juan",
+                    Apellido = "Perez",
+                    Dni = "30111222",
+                    Email = "usuario.test@torneos.com",
+                    PasswordHash = "initial_hash",
+                    Rol = RolUsuario.Organizador,
+                    Activo = true
+                });
+                context.SaveChanges();
+            }
         }
     }
 }
