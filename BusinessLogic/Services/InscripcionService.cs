@@ -66,17 +66,8 @@ namespace BusinessLogic.Services
             equipo.EdicionListaHabilitada = false;
             await _equipoRepository.UpdateAsync(equipo);
 
-            var cuposRestantes = torneo.CupoMaximo - (cantidadConfirmados + 1);
-
-            return new AprobarInscripcionResponseDTO
-            {
-                EquipoId = equipo.Id,
-                NombreEquipo = equipo.Nombre,
-                EstadoInscripcion = equipo.EstadoInscripcion.ToString(),
-                TorneoId = torneo.Id,
-                CuposDisponibles = Math.Max(0, cuposRestantes),
-                Mensaje = "La inscripción del equipo ha sido confirmada exitosamente."
-            };
+            var cuposRestantes = Math.Max(0, torneo.CupoMaximo - (cantidadConfirmados + 1));
+            return MapToAprobarResponseDTO(equipo, torneo.Id, cuposRestantes);
         }
 
         public async Task<RechazarInscripcionResponseDTO> RechazarInscripcionAsync(Guid torneoId, Guid equipoId, RechazarInscripcionDTO dto)
@@ -112,14 +103,32 @@ namespace BusinessLogic.Services
             equipo.EdicionListaHabilitada = true; // RN-03: libera edición para el capitán
             await _equipoRepository.UpdateAsync(equipo);
 
+            return MapToRechazarResponseDTO(equipo, torneo.Id);
+        }
+
+        private static AprobarInscripcionResponseDTO MapToAprobarResponseDTO(Equipo equipo, Guid torneoId, int cuposDisponibles)
+        {
+            return new AprobarInscripcionResponseDTO
+            {
+                EquipoId = equipo.Id,
+                NombreEquipo = equipo.Nombre,
+                EstadoInscripcion = equipo.EstadoInscripcion.ToString(),
+                TorneoId = torneoId,
+                CuposDisponibles = cuposDisponibles,
+                Mensaje = "La inscripción del equipo ha sido confirmada exitosamente."
+            };
+        }
+
+        private static RechazarInscripcionResponseDTO MapToRechazarResponseDTO(Equipo equipo, Guid torneoId)
+        {
             return new RechazarInscripcionResponseDTO
             {
                 EquipoId = equipo.Id,
                 NombreEquipo = equipo.Nombre,
                 EstadoInscripcion = equipo.EstadoInscripcion.ToString(),
-                TorneoId = torneo.Id,
-                MotivoRechazo = equipo.MotivoRechazo,
-                EdicionListaHabilitada = true,
+                TorneoId = torneoId,
+                MotivoRechazo = equipo.MotivoRechazo ?? string.Empty,
+                EdicionListaHabilitada = equipo.EdicionListaHabilitada,
                 Mensaje = "La inscripción ha sido observada/rechazada y se habilitó la edición de la lista de buena fe para subsanación."
             };
         }
