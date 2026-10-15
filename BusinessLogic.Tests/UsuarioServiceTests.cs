@@ -108,7 +108,7 @@ namespace BusinessLogic.Tests
                 .ReturnsAsync(existingUser);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<BusinessRuleConflictException>(() =>
+            var ex = await Assert.ThrowsAsync<UsuarioDuplicadoException>(() =>
                 _usuarioService.RegisterUsuarioAsync(dto));
 
             Assert.Equal("El correo o DNI ya se encuentra registrado en la plataforma.", ex.Message);
@@ -144,7 +144,7 @@ namespace BusinessLogic.Tests
                 .ReturnsAsync(existingUserByDni);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<BusinessRuleConflictException>(() =>
+            var ex = await Assert.ThrowsAsync<UsuarioDuplicadoException>(() =>
                 _usuarioService.RegisterUsuarioAsync(dto));
 
             Assert.Equal("El correo o DNI ya se encuentra registrado en la plataforma.", ex.Message);

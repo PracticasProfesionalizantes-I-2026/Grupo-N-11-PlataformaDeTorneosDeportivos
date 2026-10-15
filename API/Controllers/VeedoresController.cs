@@ -34,11 +34,6 @@ namespace API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateVeedor([FromBody] VeedorCreateDTO dto)
         {
-            if (dto == null || !ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             var result = await _veedorService.CreateVeedorAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
@@ -46,11 +41,6 @@ namespace API.Controllers
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> UpdateVeedor(Guid id, [FromBody] VeedorUpdateDTO dto)
         {
-            if (dto == null || !ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             var result = await _veedorService.UpdateVeedorAsync(id, dto);
             return Ok(result);
         }
