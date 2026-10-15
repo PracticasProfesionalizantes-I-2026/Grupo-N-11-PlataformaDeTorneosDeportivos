@@ -69,8 +69,7 @@ namespace BusinessLogic.Services
                 throw new TorneoNotFoundException("El torneo especificado no existe");
 
             // 3b. Verificar estado de inscripciones abiertas
-            if (!string.Equals(torneo.Estado, "Abierto para Inscripción", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(torneo.Estado, "Abierto", StringComparison.OrdinalIgnoreCase))
+            if (torneo.Estado != EstadoTorneo.Abierto)
             {
                 throw new TorneoInscripcionCerradaException("El torneo no se encuentra disponible para nuevas inscripciones");
             }

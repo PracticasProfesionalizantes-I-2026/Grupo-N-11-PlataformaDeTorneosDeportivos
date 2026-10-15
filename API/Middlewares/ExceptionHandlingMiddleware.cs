@@ -55,6 +55,7 @@ namespace API.Middlewares
                     code = HttpStatusCode.Forbidden; // 403
                     break;
                 case MinimoJugadoresInsuficienteException _:
+                case PagoRequeridoException _:
                     code = HttpStatusCode.UnprocessableEntity; // 422
                     break;
                 default:

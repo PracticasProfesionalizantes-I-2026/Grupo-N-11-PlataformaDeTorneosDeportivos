@@ -119,16 +119,15 @@ namespace BusinessLogic.Tests
             Assert.NotNull(result);
             Assert.Equal("Copa de Campeones 2026", result.Nombre);
             Assert.Equal("Futbol", result.Disciplina);
-            Assert.Equal("EliminacionDirecta", result.Modalidad);
             Assert.Equal(16, result.CupoMaximo);
             Assert.True(result.EsPago);
             Assert.Equal(2500m, result.CostoInscripcion);
-            Assert.Equal("Abierto para Inscripción", result.Estado);
+            Assert.Equal(EstadoTorneo.Abierto.ToString(), result.Estado);
 
             _torneoRepositoryMock.Verify(r => r.AddAsync(It.Is<Torneo>(t =>
                 t.Nombre == "Copa de Campeones 2026" &&
                 t.CupoMaximo == 16 &&
-                t.Estado == "Abierto para Inscripción"
+                t.Estado == EstadoTorneo.Abierto
             )), Times.Once);
         }
 

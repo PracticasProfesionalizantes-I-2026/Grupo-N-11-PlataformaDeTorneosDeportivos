@@ -45,7 +45,7 @@ namespace BusinessLogic.Tests
                 Disciplina = Disciplina.Futbol,
                 Modalidad = Modalidad.Liga,
                 CupoMaximo = 10,
-                Estado = "Abierto para Inscripción"
+                Estado = EstadoTorneo.Abierto
             };
 
             var dto = new EquipoCreateDTO
@@ -129,7 +129,7 @@ namespace BusinessLogic.Tests
                 Id = torneoId,
                 Nombre = "Torneo En Curso",
                 Disciplina = Disciplina.Futbol,
-                Estado = "Inscripciones Cerradas"
+                Estado = EstadoTorneo.InscripcionesCerradas
             };
 
             var dto = new EquipoCreateDTO
@@ -163,7 +163,7 @@ namespace BusinessLogic.Tests
                 Id = torneoId,
                 Nombre = "Torneo Futbol 5",
                 Disciplina = Disciplina.Futbol,
-                Estado = "Abierto para Inscripción"
+                Estado = EstadoTorneo.Abierto
             };
 
             var dto = new EquipoCreateDTO
@@ -202,7 +202,7 @@ namespace BusinessLogic.Tests
                 Id = torneoId,
                 Nombre = "Torneo Futbol",
                 Disciplina = Disciplina.Futbol,
-                Estado = "Abierto para Inscripción"
+                Estado = EstadoTorneo.Abierto
             };
 
             var dto = new EquipoCreateDTO
@@ -243,7 +243,7 @@ namespace BusinessLogic.Tests
                 Id = torneoId,
                 Nombre = "Torneo Futbol",
                 Disciplina = Disciplina.Futbol,
-                Estado = "Abierto para Inscripción"
+                Estado = EstadoTorneo.Abierto
             };
 
             var dto = new EquipoCreateDTO
@@ -297,7 +297,7 @@ namespace BusinessLogic.Tests
                 Id = torneoId,
                 Nombre = "Torneo Futbol",
                 Disciplina = Disciplina.Futbol,
-                Estado = "Abierto para Inscripción"
+                Estado = EstadoTorneo.Abierto
             };
 
             var dto = new EquipoCreateDTO

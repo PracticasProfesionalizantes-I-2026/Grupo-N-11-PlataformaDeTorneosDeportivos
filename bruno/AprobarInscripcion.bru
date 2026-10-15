@@ -1,0 +1,11 @@
+meta {
+  name: AprobarInscripcion
+  type: http
+  seq: 6
+}
+
+patch {
+  url: http://localhost:5000/api/torneos/{{torneoId}}/equipos/{{equipoId}}/aprobar
+  body: none
+  auth: none
+}

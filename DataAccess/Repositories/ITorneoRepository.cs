@@ -8,5 +8,6 @@ namespace DataAccess.Repositories
     {
         Task<IEnumerable<Torneo>> GetTorneosConEquiposAsync();
         Task<Torneo?> GetTorneoConEquiposAsync(System.Guid id);
+        Task<Torneo?> GetByNombreAsync(string nombre);
     }
 }

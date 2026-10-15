@@ -40,6 +40,7 @@ namespace API
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IUsuarioService, UsuarioService>();
             builder.Services.AddScoped<IFixtureService, FixtureService>();
+            builder.Services.AddScoped<IInscripcionService, InscripcionService>();
 
             var app = builder.Build();
 

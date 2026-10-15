@@ -78,7 +78,7 @@ namespace API.IntegrationTests
             Assert.Equal("Futbol", created.Disciplina);
             Assert.Equal("EliminacionDirecta", created.Modalidad);
             Assert.Equal(8, created.CupoMaximo);
-            Assert.Equal("Abierto para Inscripción", created.Estado);
+            Assert.Equal(EstadoTorneo.Abierto.ToString(), created.Estado);
         }
 
         [Fact]

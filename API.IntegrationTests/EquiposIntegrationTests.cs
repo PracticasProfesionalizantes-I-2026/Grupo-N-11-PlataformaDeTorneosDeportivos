@@ -25,7 +25,7 @@ namespace API.IntegrationTests
             _client = factory.CreateClient();
         }
 
-        private async Task<Torneo> CreateTestTorneoAsync(string nombre, Disciplina disciplina, string estado = "Abierto para Inscripción")
+        private async Task<Torneo> CreateTestTorneoAsync(string nombre, Disciplina disciplina, EstadoTorneo estado = EstadoTorneo.Abierto)
         {
             using var scope = _factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -137,7 +137,7 @@ namespace API.IntegrationTests
         public async Task CreateEquipo_WhenTorneoClosed_Returns409Conflict()
         {
             // Arrange - Torneo con inscripciones cerradas
-            var torneo = await CreateTestTorneoAsync($"Torneo Cerrado {Guid.NewGuid():N}", Disciplina.Futbol, estado: "Inscripciones Cerradas");
+            var torneo = await CreateTestTorneoAsync($"Torneo Cerrado {Guid.NewGuid():N}", Disciplina.Futbol, estado: EstadoTorneo.InscripcionesCerradas);
             var dto = new EquipoCreateDTO
             {
                 Nombre = $"Equipo Tardio {Guid.NewGuid():N}",

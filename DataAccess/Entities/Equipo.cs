@@ -10,6 +10,9 @@ namespace DataAccess.Entities
         public string Nombre { get; set; } = string.Empty;
         public string? Logo { get; set; }
         public EstadoInscripcion EstadoInscripcion { get; set; }
+        public bool PagoValidado { get; set; } = false;
+        public string? MotivoRechazo { get; set; }
+        public bool EdicionListaHabilitada { get; set; } = false;
 
         public Guid TorneoId { get; set; }
         public Torneo Torneo { get; set; } = null!;
