@@ -15,5 +15,7 @@ namespace DataAccess.Entities
         public RolUsuario Rol { get; set; } = RolUsuario.Capitan;
         public bool Activo { get; set; } = true;
         public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+        public string? PasswordResetToken { get; set; }
+        public DateTime? PasswordResetTokenExpiration { get; set; }
     }
 }

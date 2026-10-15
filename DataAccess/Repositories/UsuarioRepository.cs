@@ -33,5 +33,11 @@ namespace DataAccess.Repositories
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Dni == dni);
         }
+
+        public async Task<Usuario?> GetByPasswordResetTokenAsync(string token)
+        {
+            return await _dbSet
+                .FirstOrDefaultAsync(u => u.PasswordResetToken == token);
+        }
     }
 }
