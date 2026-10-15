@@ -8,6 +8,7 @@ namespace DataAccess.Entities
         public string Nombre { get; set; } = string.Empty;
         public string Apellido { get; set; } = string.Empty;
         public string Dni { get; set; } = string.Empty;
+        public string? DocumentacionUrl { get; set; }
 
         public Guid EquipoId { get; set; }
         public Equipo Equipo { get; set; } = null!;
