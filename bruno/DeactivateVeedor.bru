@@ -1,0 +1,11 @@
+meta {
+  name: DeactivateVeedor
+  type: http
+  seq: 10
+}
+
+delete {
+  url: http://localhost:5000/api/veedores/{{veedorId}}
+  body: none
+  auth: none
+}
