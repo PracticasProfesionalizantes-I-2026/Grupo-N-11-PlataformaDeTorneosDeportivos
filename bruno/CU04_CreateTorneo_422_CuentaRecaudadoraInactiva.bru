@@ -1,0 +1,37 @@
+﻿meta {
+  name: CU-04 - Cuenta Recaudadora Inactiva RN-05 (422)
+  type: http
+  seq: 25
+}
+
+post {
+  url: {{baseUrl}}/torneos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Torneo Arancelado Sin Cuenta",
+    "disciplinaId": 1,
+    "modalidad": 0,
+    "cupoMaximo": 8,
+    "esPago": true,
+    "costoInscripcion": 5000,
+    "cuentaRecaudadoraActiva": false
+  }
+}
+
+tests {
+  test("Status code is 422", function() {
+    expect(res.getStatus()).to.equal(422);
+  });
+}

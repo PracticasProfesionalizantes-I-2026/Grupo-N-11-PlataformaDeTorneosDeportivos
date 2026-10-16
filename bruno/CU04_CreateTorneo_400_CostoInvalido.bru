@@ -1,0 +1,36 @@
+﻿meta {
+  name: CU-04 - Costo Invalido en Torneo Pago (400)
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/torneos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Torneo Arancelado Invalido",
+    "disciplinaId": 1,
+    "modalidad": 0,
+    "cupoMaximo": 8,
+    "esPago": true,
+    "costoInscripcion": 0
+  }
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

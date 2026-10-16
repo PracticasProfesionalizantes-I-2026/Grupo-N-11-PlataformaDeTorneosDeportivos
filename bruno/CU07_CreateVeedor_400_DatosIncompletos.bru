@@ -1,0 +1,32 @@
+﻿meta {
+  name: CU-07 - Crear Veedor Datos Incompletos (400)
+  type: http
+  seq: 38
+}
+
+post {
+  url: {{baseUrl}}/veedores
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "",
+    "email": "correo-no-valido"
+  }
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

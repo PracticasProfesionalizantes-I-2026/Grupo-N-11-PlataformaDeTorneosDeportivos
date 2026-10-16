@@ -1,11 +1,21 @@
 meta {
-  name: GetTorneos
+  name: CU-04 - Listar Torneos (200)
   type: http
   seq: 1
 }
 
 get {
-  url: http://localhost:5000/api/torneos
+  url: {{baseUrl}}/torneos
   body: none
   auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
 }

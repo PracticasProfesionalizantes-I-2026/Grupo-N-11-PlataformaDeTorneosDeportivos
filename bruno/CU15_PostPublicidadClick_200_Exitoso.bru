@@ -1,0 +1,21 @@
+﻿meta {
+  name: CU-15 - Registrar Clic en Publicidad (200)
+  type: http
+  seq: 65
+}
+
+post {
+  url: {{baseUrl}}/publicidad/{{bannerId}}/click
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

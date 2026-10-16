@@ -1,21 +1,37 @@
 meta {
-  name: CreateTorneo
+  name: CU-04 - Crear Torneo Exitoso (201)
   type: http
   seq: 2
 }
 
 post {
-  url: http://localhost:5000/api/torneos
+  url: {{baseUrl}}/torneos
   body: json
-  auth: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
 }
 
 body:json {
   {
     "nombre": "Copa America",
     "disciplina": 0,
+    "disciplinaId": 1,
     "modalidad": 0,
     "cupoMaximo": 16,
-    "costoInscripcion": 5000
+    "esPago": false,
+    "costoInscripcion": 0
   }
+}
+
+tests {
+  test("Status code is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
 }

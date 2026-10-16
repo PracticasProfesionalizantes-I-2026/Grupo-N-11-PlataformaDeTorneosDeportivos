@@ -1,0 +1,25 @@
+﻿meta {
+  name: CU-06 - Aprobar Equipo Inexistente (404)
+  type: http
+  seq: 33
+}
+
+patch {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos/00000000-0000-0000-0000-000000000000/aprobar
+  body: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+tests {
+  test("Status code is 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+}

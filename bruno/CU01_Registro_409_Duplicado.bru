@@ -1,0 +1,33 @@
+﻿meta {
+  name: CU-01 - Conflicto DNI o Email Duplicado RN-10 (409)
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/usuarios/registro
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "nombre": "Lucas",
+    "apellido": "Fernandez",
+    "dni": "40123456",
+    "email": "lucas.fernandez@torneos.com",
+    "telefono": "1133445566",
+    "password": "Password123!",
+    "rol": "Capitan"
+  }
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}

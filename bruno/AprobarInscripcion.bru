@@ -1,11 +1,25 @@
 meta {
-  name: AprobarInscripcion
+  name: CU-06 - Aprobar Inscripcion Exitosa (200)
   type: http
   seq: 6
 }
 
 patch {
-  url: http://localhost:5000/api/torneos/{{torneoId}}/equipos/{{equipoId}}/aprobar
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos/{{equipoId}}/aprobar
   body: none
-  auth: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
 }

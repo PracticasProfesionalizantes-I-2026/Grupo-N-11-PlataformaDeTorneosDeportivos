@@ -1,13 +1,17 @@
 meta {
-  name: RegistroUsuario
+  name: CU-01 - Registro Exitoso (201)
   type: http
   seq: 4
 }
 
 post {
-  url: http://localhost:5000/api/usuarios/registro
+  url: {{baseUrl}}/usuarios/registro
   body: json
   auth: none
+}
+
+headers {
+  Content-Type: application/json
 }
 
 body:json {
@@ -20,4 +24,10 @@ body:json {
     "password": "Password123!",
     "rol": "Capitan"
   }
+}
+
+tests {
+  test("Status code is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
 }

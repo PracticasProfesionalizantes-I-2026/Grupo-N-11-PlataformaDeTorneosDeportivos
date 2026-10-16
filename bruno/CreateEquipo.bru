@@ -1,13 +1,21 @@
 meta {
-  name: CreateEquipo
+  name: CU-05 - Crear Equipo Exitoso (201)
   type: http
   seq: 5
 }
 
 post {
-  url: http://localhost:5000/api/torneos/{{torneoId}}/equipos
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos
   body: json
-  auth: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
 }
 
 body:json {
@@ -47,4 +55,10 @@ body:json {
       }
     ]
   }
+}
+
+tests {
+  test("Status code is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
 }

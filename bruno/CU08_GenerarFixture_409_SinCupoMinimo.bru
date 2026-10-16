@@ -1,0 +1,33 @@
+﻿meta {
+  name: CU-08 - Torneo Sin Minimo Equipos Requerido (409)
+  type: http
+  seq: 41
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/generar-fixture
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "fechaInicio": "2026-11-01T10:00:00Z",
+    "horarios": ["10:00"],
+    "sedes": ["Cancha Principal"]
+  }
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}

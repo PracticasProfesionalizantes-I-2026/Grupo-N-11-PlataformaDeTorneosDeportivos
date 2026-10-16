@@ -1,0 +1,31 @@
+﻿meta {
+  name: CU-01 - Password Inseguro o Datos Faltantes (400)
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/usuarios/registro
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "nombre": "",
+    "apellido": "Fernandez",
+    "dni": "40123456",
+    "email": "correo-invalido",
+    "password": "123"
+  }
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

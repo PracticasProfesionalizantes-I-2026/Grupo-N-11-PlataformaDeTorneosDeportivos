@@ -1,0 +1,32 @@
+﻿meta {
+  name: CU-04 - Crear Torneo Campos Faltantes (400)
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/torneos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "",
+    "cupoMaximo": 0
+  }
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

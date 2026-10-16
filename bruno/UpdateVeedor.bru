@@ -1,13 +1,21 @@
 meta {
-  name: UpdateVeedor
+  name: CU-07 - Actualizar Veedor Exitoso (200)
   type: http
   seq: 9
 }
 
 put {
-  url: http://localhost:5000/api/veedores/{{veedorId}}
+  url: {{baseUrl}}/veedores/{{veedorId}}
   body: json
-  auth: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
 }
 
 body:json {
@@ -17,4 +25,10 @@ body:json {
     "telefono": "9988776655",
     "sedeAsignada": "Sede Norte"
   }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
 }

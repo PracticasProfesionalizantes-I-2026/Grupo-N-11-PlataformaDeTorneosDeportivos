@@ -1,13 +1,21 @@
 meta {
-  name: GenerarFixture
+  name: CU-08 - Solicitar Generacion Fixture Exitoso (200)
   type: http
-  seq: 5
+  seq: 11
 }
 
 post {
-  url: http://localhost:5000/api/torneos/{{torneoId}}/generar-fixture
+  url: {{baseUrl}}/torneos/{{torneoId}}/generar-fixture
   body: json
-  auth: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
 }
 
 body:json {
@@ -24,4 +32,10 @@ body:json {
       "Cancha 2"
     ]
   }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
 }

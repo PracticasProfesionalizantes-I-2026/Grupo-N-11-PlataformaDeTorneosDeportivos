@@ -1,0 +1,21 @@
+﻿meta {
+  name: CU-12 - Fixture No Publicado Retorna Vacio (200)
+  type: http
+  seq: 56
+}
+
+get {
+  url: {{baseUrl}}/torneos/{{torneoId}}/fixture
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

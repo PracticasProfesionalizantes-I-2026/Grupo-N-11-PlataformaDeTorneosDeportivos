@@ -1,0 +1,21 @@
+﻿meta {
+  name: CU-15 - Consultar Publicidad del Torneo (200)
+  type: http
+  seq: 64
+}
+
+get {
+  url: {{baseUrl}}/torneos/{{torneoId}}/publicidad
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

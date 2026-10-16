@@ -1,0 +1,35 @@
+﻿meta {
+  name: CU-04 - Cupo Invalido Eliminacion Directa RN-04 (422)
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{baseUrl}}/torneos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Torneo Eliminacion Impar",
+    "disciplinaId": 1,
+    "modalidad": 1,
+    "cupoMaximo": 6,
+    "esPago": false
+  }
+}
+
+tests {
+  test("Status code is 422", function() {
+    expect(res.getStatus()).to.equal(422);
+  });
+}

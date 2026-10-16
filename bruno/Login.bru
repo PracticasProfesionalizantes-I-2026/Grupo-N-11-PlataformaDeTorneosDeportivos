@@ -1,13 +1,17 @@
 meta {
-  name: Login
+  name: CU-02 - Login Exitoso (200)
   type: http
   seq: 3
 }
 
 post {
-  url: http://localhost:5000/api/auth/login
+  url: {{baseUrl}}/auth/login
   body: json
   auth: none
+}
+
+headers {
+  Content-Type: application/json
 }
 
 body:json {
@@ -15,4 +19,10 @@ body:json {
     "emailOrDni": "organizador@torneos.com",
     "password": "Password123!"
   }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
 }

@@ -1,0 +1,33 @@
+﻿meta {
+  name: CU-16 - Torneo No Cerrado para Fixture (409)
+  type: http
+  seq: 68
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/fixture
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "fechaInicio": "2026-12-01T09:00:00Z",
+    "franjasHorarias": ["10:00"],
+    "canchasDisponibles": ["Cancha 1"]
+  }
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}
