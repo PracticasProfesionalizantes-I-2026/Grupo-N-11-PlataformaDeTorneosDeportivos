@@ -61,5 +61,23 @@ namespace API.Controllers
             await _veedorService.DeactivateVeedorAsync(id);
             return NoContent();
         }
+
+        [HttpGet("{id:guid}/partidos")]
+        public async Task<IActionResult> GetPartidos(
+            Guid id,
+            [FromQuery] DateTime? fecha,
+            [FromQuery] Guid? torneoId)
+        {
+            Guid? currentUserId = null;
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(userIdClaim, out var parsedId))
+            {
+                currentUserId = parsedId;
+            }
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            var result = await _veedorService.GetPartidosByVeedorAsync(id, fecha, torneoId, currentUserId, roleClaim);
+            return Ok(result);
+        }
     }
 }

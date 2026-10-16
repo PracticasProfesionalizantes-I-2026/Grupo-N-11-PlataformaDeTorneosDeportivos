@@ -178,5 +178,127 @@ namespace API.IntegrationTests
             Assert.NotNull(fetched);
             Assert.False(fetched.Activo);
         }
+
+        [Fact]
+        public async Task GetPartidosVeedor_Returns200OKAndList()
+        {
+            // Arrange - Crear veedor, torneo y partido asignado
+            var veedorId = Guid.NewGuid();
+            var torneoId = Guid.NewGuid();
+            var localId = Guid.NewGuid();
+            var visitanteId = Guid.NewGuid();
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                db.Usuarios.Add(new Usuario
+                {
+                    Id = veedorId,
+                    Nombre = "Veedor",
+                    Apellido = "Asignado",
+                    Dni = $"{Random.Shared.Next(10000000, 99999999)}",
+                    Email = $"veedor_{Guid.NewGuid():N}@torneos.com",
+                    Rol = RolUsuario.Veedor,
+                    Activo = true
+                });
+
+                db.Torneos.Add(new Torneo
+                {
+                    Id = torneoId,
+                    Nombre = "Torneo Integration",
+                    Disciplina = Disciplina.Futbol,
+                    Modalidad = Modalidad.Liga,
+                    CupoMaximo = 8,
+                    CostoInscripcion = 0
+                });
+
+                db.Equipos.Add(new Equipo
+                {
+                    Id = localId,
+                    Nombre = "Equipo Norte",
+                    TorneoId = torneoId,
+                    EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+                });
+
+                db.Equipos.Add(new Equipo
+                {
+                    Id = visitanteId,
+                    Nombre = "Equipo Sur",
+                    TorneoId = torneoId,
+                    EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+                });
+
+                db.Partidos.Add(new Partido
+                {
+                    Id = Guid.NewGuid(),
+                    TorneoId = torneoId,
+                    EquipoLocalId = localId,
+                    EquipoVisitanteId = visitanteId,
+                    VeedorId = veedorId,
+                    FechaHora = DateTime.Today.AddHours(16),
+                    Sede = "Estadio Municipal",
+                    Ronda = 1,
+                    Estado = EstadoPartido.Pendiente
+                });
+
+                await db.SaveChangesAsync();
+            }
+
+            // Act
+            var response = await _client.GetAsync($"/api/veedores/{veedorId}/partidos");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var partidos = await response.Content.ReadFromJsonAsync<System.Collections.Generic.List<PartidoCronogramaResponseDTO>>();
+            Assert.NotNull(partidos);
+            Assert.NotEmpty(partidos);
+            Assert.Equal("Estadio Municipal", partidos[0].Sede);
+            Assert.Equal("Torneo Integration", partidos[0].TorneoNombre);
+        }
+
+        [Fact]
+        public async Task GetPartidosVeedor_WhenNoMatches_Returns200OKAndEmpty()
+        {
+            // Arrange - Crear veedor sin partidos
+            var veedorId = Guid.NewGuid();
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                db.Usuarios.Add(new Usuario
+                {
+                    Id = veedorId,
+                    Nombre = "Veedor",
+                    Apellido = "Sin Partidos",
+                    Dni = $"{Random.Shared.Next(10000000, 99999999)}",
+                    Email = $"sinpartidos_{Guid.NewGuid():N}@torneos.com",
+                    Rol = RolUsuario.Veedor,
+                    Activo = true
+                });
+
+                await db.SaveChangesAsync();
+            }
+
+            // Act
+            var response = await _client.GetAsync($"/api/veedores/{veedorId}/partidos");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var partidos = await response.Content.ReadFromJsonAsync<System.Collections.Generic.List<PartidoCronogramaResponseDTO>>();
+            Assert.NotNull(partidos);
+            Assert.Empty(partidos);
+        }
+
+        [Fact]
+        public async Task GetPartidosVeedor_WithNonExistentVeedor_Returns404NotFound()
+        {
+            // Act
+            var response = await _client.GetAsync($"/api/veedores/{Guid.NewGuid()}/partidos");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
     }
 }
