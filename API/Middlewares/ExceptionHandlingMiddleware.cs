@@ -37,6 +37,8 @@ namespace API.Middlewares
             {
                 case CupoInvalidoEliminacionException _:
                 case CuentaRecaudadoraInactivaException _:
+                case EquiposInsuficientesException _:
+                case DisponibilidadHorariaInsuficienteException _:
                     code = HttpStatusCode.UnprocessableEntity; // 422
                     break;
                 case NotFoundException _:

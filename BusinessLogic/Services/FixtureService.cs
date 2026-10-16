@@ -160,6 +160,194 @@ namespace BusinessLogic.Services
             return MapToResponseDTO(torneo, partidosGenerados, nombresEquipos);
         }
 
+        public async Task<FixtureResponseDTO> GenerarFixtureAsync(Guid torneoId, FixtureParametrosDTO dto)
+        {
+            var torneo = await _torneoRepository.GetTorneoConEquiposAsync(torneoId) ?? await _torneoRepository.GetByIdAsync(torneoId);
+
+            if (torneo == null)
+            {
+                throw new TorneoNotFoundException("El torneo especificado no existe");
+            }
+
+            // Validar estado del torneo: debe estar estrictamente en InscripcionesCerradas (Flujo 3b)
+            if (torneo.Estado != EstadoTorneo.InscripcionesCerradas)
+            {
+                throw new TorneoEstadoInvalidoException("El fixture solo puede generarse cuando el torneo se encuentra en estado Inscripciones Cerradas");
+            }
+
+            if (torneo.Partidos != null && torneo.Partidos.Count > 0)
+            {
+                throw new TorneoEstadoInvalidoException("El torneo ya tiene un fixture generado.");
+            }
+
+            // Validar cupo mínimo de 4 equipos confirmados (Flujo 3c)
+            var equiposConfirmados = (torneo.Equipos ?? new List<Equipo>())
+                .Where(e => e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado)
+                .ToList();
+
+            if (equiposConfirmados.Count < 4)
+            {
+                throw new EquiposInsuficientesException("Se requieren al menos 4 equipos confirmados para generar el fixture");
+            }
+
+            var canchas = dto.CanchasDisponibles ?? new List<string>();
+            var franjas = dto.FranjasHorarias ?? new List<string>();
+            int capacidadPorDia = canchas.Count * franjas.Count;
+
+            if (capacidadPorDia <= 0)
+            {
+                throw new DisponibilidadHorariaInsuficienteException("Disponibilidad horaria insuficiente para programar los partidos respetando la RN-09. Amplíe días u horarios");
+            }
+
+            var fechaBase = dto.FechaInicio?.Date ?? DateTime.Today.AddDays(1);
+            var partidosGenerados = new List<Partido>();
+            var descansos = new List<string>();
+            var pasesDirectos = new List<string>();
+            int totalJornadas = 0;
+
+            if (torneo.Modalidad == Modalidad.Liga)
+            {
+                // Validación RN-09: Un partido por día por equipo
+                int effectiveTeams = equiposConfirmados.Count % 2 == 0 ? equiposConfirmados.Count : equiposConfirmados.Count + 1;
+                int partidosPorRonda = effectiveTeams / 2;
+
+                if (partidosPorRonda > capacidadPorDia)
+                {
+                    throw new DisponibilidadHorariaInsuficienteException("Disponibilidad horaria insuficiente para programar los partidos respetando la RN-09. Amplíe días u horarios");
+                }
+
+                var teams = new List<Equipo?>(equiposConfirmados);
+                if (teams.Count % 2 != 0)
+                {
+                    teams.Add(null); // Bye
+                }
+
+                int n = teams.Count;
+                totalJornadas = n - 1;
+
+                for (int r = 0; r < totalJornadas; r++)
+                {
+                    var fechaRonda = fechaBase.AddDays(r);
+                    int matchInRound = 0;
+
+                    for (int i = 0; i < partidosPorRonda; i++)
+                    {
+                        var local = teams[i];
+                        var visitante = teams[n - 1 - i];
+
+                        if (local == null && visitante != null)
+                        {
+                            descansos.Add($"Jornada {r + 1}: Descansa {visitante.Nombre}");
+                        }
+                        else if (visitante == null && local != null)
+                        {
+                            descansos.Add($"Jornada {r + 1}: Descansa {local.Nombre}");
+                        }
+                        else if (local != null && visitante != null)
+                        {
+                            var cancha = canchas[matchInRound % canchas.Count];
+                            var horario = franjas[matchInRound % franjas.Count];
+                            var fechaHora = CombinarFechaYHora(fechaRonda, horario, matchInRound);
+
+                            partidosGenerados.Add(new Partido
+                            {
+                                Id = Guid.NewGuid(),
+                                TorneoId = torneo.Id,
+                                EquipoLocalId = local.Id,
+                                EquipoVisitanteId = visitante.Id,
+                                FechaHora = fechaHora,
+                                Sede = cancha,
+                                Ronda = r + 1,
+                                Estado = EstadoPartido.Pendiente
+                            });
+
+                            matchInRound++;
+                        }
+                    }
+
+                    // Rotación Round-Robin
+                    var ultimo = teams[n - 1];
+                    teams.RemoveAt(n - 1);
+                    teams.Insert(1, ultimo);
+                }
+            }
+            else
+            {
+                // Eliminación Directa con cálculo de Byes
+                int N = equiposConfirmados.Count;
+                int p = NextPowerOfTwo(N);
+                int byes = p - N;
+
+                int crucesRonda1 = (N - byes) / 2;
+                if (crucesRonda1 > capacidadPorDia)
+                {
+                    throw new DisponibilidadHorariaInsuficienteException("Disponibilidad horaria insuficiente para programar los partidos respetando la RN-09. Amplíe días u horarios");
+                }
+
+                for (int b = 0; b < byes; b++)
+                {
+                    pasesDirectos.Add(equiposConfirmados[b].Nombre);
+                }
+
+                var equiposRonda1 = equiposConfirmados.Skip(byes).ToList();
+                int cruces = equiposRonda1.Count / 2;
+                var fechaRonda = fechaBase;
+                totalJornadas = (int)Math.Round(Math.Log2(p));
+
+                for (int i = 0; i < cruces; i++)
+                {
+                    var local = equiposRonda1[i * 2];
+                    var visitante = equiposRonda1[i * 2 + 1];
+
+                    var cancha = canchas[i % canchas.Count];
+                    var horario = franjas[i % franjas.Count];
+                    var fechaHora = CombinarFechaYHora(fechaRonda, horario, i);
+
+                    partidosGenerados.Add(new Partido
+                    {
+                        Id = Guid.NewGuid(),
+                        TorneoId = torneo.Id,
+                        EquipoLocalId = local.Id,
+                        EquipoVisitanteId = visitante.Id,
+                        FechaHora = fechaHora,
+                        Sede = cancha,
+                        Ronda = 1,
+                        Estado = EstadoPartido.Pendiente
+                    });
+                }
+            }
+
+            // RN-08: Bloqueo permanente de inscripciones y pase a "En Desarrollo"
+            torneo.Estado = EstadoTorneo.EnDesarrollo;
+            await _torneoRepository.UpdateAsync(torneo);
+            await _partidoRepository.AddRangeAsync(partidosGenerados);
+
+            var nombresEquipos = equiposConfirmados.ToDictionary(e => e.Id, e => e.Nombre);
+            var fechaFin = partidosGenerados.Count > 0 ? partidosGenerados.Max(p => p.FechaHora) : fechaBase;
+
+            return new FixtureResponseDTO
+            {
+                FixtureId = Guid.NewGuid(),
+                TorneoId = torneo.Id,
+                Mensaje = "Fixture generado exitosamente y torneo en desarrollo.",
+                EstadoTorneo = torneo.Estado.ToString(),
+                TotalJornadas = totalJornadas,
+                CantidadPartidosProgramados = partidosGenerados.Count,
+                TotalPartidosProgramados = partidosGenerados.Count,
+                FechaEstimadaFinalizacion = fechaFin,
+                Partidos = partidosGenerados.Select(p => MapToPartidoResponseDTO(p, nombresEquipos)).ToList(),
+                Descansos = descansos,
+                PasesDirectos = pasesDirectos
+            };
+        }
+
+        private static int NextPowerOfTwo(int n)
+        {
+            int p = 1;
+            while (p < n) p *= 2;
+            return p;
+        }
+
         public async Task<IEnumerable<PartidoResponseDTO>> GetFixtureAsync(Guid torneoId)
         {
             var torneo = await _torneoRepository.GetByIdAsync(torneoId);
