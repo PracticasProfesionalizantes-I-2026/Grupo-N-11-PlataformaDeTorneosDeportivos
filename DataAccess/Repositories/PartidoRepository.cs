@@ -28,6 +28,8 @@ namespace DataAccess.Repositories
                 .Include(p => p.EquipoLocal)
                 .Include(p => p.EquipoVisitante)
                 .Where(p => p.TorneoId == torneoId)
+                .OrderBy(p => p.Ronda)
+                .ThenBy(p => p.FechaHora)
                 .AsNoTracking()
                 .ToListAsync();
         }

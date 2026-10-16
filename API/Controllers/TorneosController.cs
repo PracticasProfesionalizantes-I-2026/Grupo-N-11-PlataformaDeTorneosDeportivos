@@ -60,5 +60,12 @@ namespace API.Controllers
             var response = await _fixtureService.GenerarFixtureAsync(id, dto);
             return Ok(response);
         }
+
+        [HttpGet("{id}/fixture")]
+        public async Task<IActionResult> GetFixture(Guid id)
+        {
+            var fixture = await _fixtureService.GetFixtureAsync(id);
+            return Ok(fixture);
+        }
     }
 }

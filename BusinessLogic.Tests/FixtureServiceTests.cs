@@ -230,5 +230,126 @@ namespace BusinessLogic.Tests
             _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.Is<Torneo>(t => t.Estado == EstadoTorneo.EnDesarrollo)), Times.Once);
             _partidoRepositoryMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>()), Times.Once);
         }
+
+        [Fact]
+        public async Task GetFixtureAsync_ReturnsListaPartidos()
+        {
+            // Arrange
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Clausura 2026",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                Estado = EstadoTorneo.EnDesarrollo
+            };
+
+            var equipoLocal = new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo A" };
+            var equipoVisitante = new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo B" };
+
+            var partidos = new List<Partido>
+            {
+                new Partido
+                {
+                    Id = Guid.NewGuid(),
+                    TorneoId = torneoId,
+                    EquipoLocalId = equipoLocal.Id,
+                    EquipoLocal = equipoLocal,
+                    EquipoVisitanteId = equipoVisitante.Id,
+                    EquipoVisitante = equipoVisitante,
+                    FechaHora = DateTime.Today.AddDays(1),
+                    Sede = "Cancha 1",
+                    Ronda = 1,
+                    Estado = EstadoPartido.Finalizado,
+                    MarcadorLocal = 2,
+                    MarcadorVisitante = 1
+                },
+                new Partido
+                {
+                    Id = Guid.NewGuid(),
+                    TorneoId = torneoId,
+                    EquipoLocalId = equipoVisitante.Id,
+                    EquipoLocal = equipoVisitante,
+                    EquipoVisitanteId = equipoLocal.Id,
+                    EquipoVisitante = equipoLocal,
+                    FechaHora = DateTime.Today.AddDays(7),
+                    Sede = "Cancha 2",
+                    Ronda = 2,
+                    Estado = EstadoPartido.Pendiente,
+                    MarcadorLocal = null,
+                    MarcadorVisitante = null
+                }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetByIdAsync(torneoId))
+                .ReturnsAsync(torneo);
+            _partidoRepositoryMock.Setup(r => r.GetPartidosByTorneoIdAsync(torneoId))
+                .ReturnsAsync(partidos);
+
+            // Act
+            var result = (await _fixtureService.GetFixtureAsync(torneoId)).ToList();
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Count);
+            Assert.Equal(equipoLocal.Nombre, result[0].EquipoLocalNombre);
+            Assert.Equal(equipoVisitante.Nombre, result[0].EquipoVisitanteNombre);
+            Assert.Equal(2, result[0].MarcadorLocal);
+            Assert.Equal(1, result[0].MarcadorVisitante);
+            Assert.Equal("Finalizado", result[0].Estado);
+
+            Assert.Equal(equipoVisitante.Nombre, result[1].EquipoLocalNombre);
+            Assert.Equal(equipoLocal.Nombre, result[1].EquipoVisitanteNombre);
+            Assert.Null(result[1].MarcadorLocal);
+            Assert.Null(result[1].MarcadorVisitante);
+            Assert.Equal("Pendiente", result[1].Estado);
+
+            _torneoRepositoryMock.Verify(r => r.GetByIdAsync(torneoId), Times.Once);
+            _partidoRepositoryMock.Verify(r => r.GetPartidosByTorneoIdAsync(torneoId), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetFixtureAsync_WhenNoMatches_ReturnsEmptyList()
+        {
+            // Arrange
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Sin Partidos",
+                Estado = EstadoTorneo.Abierto
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetByIdAsync(torneoId))
+                .ReturnsAsync(torneo);
+            _partidoRepositoryMock.Setup(r => r.GetPartidosByTorneoIdAsync(torneoId))
+                .ReturnsAsync(new List<Partido>());
+
+            // Act
+            var result = await _fixtureService.GetFixtureAsync(torneoId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Empty(result);
+
+            _torneoRepositoryMock.Verify(r => r.GetByIdAsync(torneoId), Times.Once);
+            _partidoRepositoryMock.Verify(r => r.GetPartidosByTorneoIdAsync(torneoId), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetFixtureAsync_WhenTorneoNotFound_ThrowsNotFoundException()
+        {
+            // Arrange
+            var torneoId = Guid.NewGuid();
+            _torneoRepositoryMock.Setup(r => r.GetByIdAsync(torneoId))
+                .ReturnsAsync((Torneo?)null);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<NotFoundException>(() => _fixtureService.GetFixtureAsync(torneoId));
+
+            _torneoRepositoryMock.Verify(r => r.GetByIdAsync(torneoId), Times.Once);
+            _partidoRepositoryMock.Verify(r => r.GetPartidosByTorneoIdAsync(It.IsAny<Guid>()), Times.Never);
+        }
     }
 }

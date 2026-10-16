@@ -156,5 +156,59 @@ namespace API.IntegrationTests
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
+
+        [Fact]
+        public async Task GetFixture_Returns200OK()
+        {
+            // Arrange
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.Abierto, 4);
+            var dto = new GenerarFixtureRequestDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                Horarios = new List<string> { "14:00", "16:00" },
+                Sedes = new List<string> { "Cancha Principal", "Cancha 2" }
+            };
+            var genResponse = await _client.PostAsJsonAsync($"/api/torneos/{torneo.Id}/generar-fixture", dto);
+            Assert.Equal(HttpStatusCode.OK, genResponse.StatusCode);
+
+            // Act
+            var response = await _client.GetAsync($"/api/torneos/{torneo.Id}/fixture");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var result = await response.Content.ReadFromJsonAsync<List<PartidoResponseDTO>>();
+            Assert.NotNull(result);
+            Assert.NotEmpty(result);
+            Assert.All(result, p => Assert.Equal(torneo.Id, p.TorneoId));
+        }
+
+        [Fact]
+        public async Task GetFixture_WhenNotGenerated_Returns200OKAndEmpty()
+        {
+            // Arrange (Torneo recién creado sin partidos generados)
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.Abierto, 2);
+
+            // Act
+            var response = await _client.GetAsync($"/api/torneos/{torneo.Id}/fixture");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var result = await response.Content.ReadFromJsonAsync<List<PartidoResponseDTO>>();
+            Assert.NotNull(result);
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task GetFixture_WhenTorneoDoesNotExist_Returns404NotFound()
+        {
+            // Arrange
+            var nonExistentId = Guid.NewGuid();
+
+            // Act
+            var response = await _client.GetAsync($"/api/torneos/{nonExistentId}/fixture");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
     }
 }
