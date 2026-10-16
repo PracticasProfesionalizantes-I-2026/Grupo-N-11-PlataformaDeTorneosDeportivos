@@ -31,6 +31,7 @@ namespace API
             builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
             builder.Services.AddScoped<IPartidoRepository, PartidoRepository>();
             builder.Services.AddScoped<IIncidenciaRepository, IncidenciaRepository>();
+            builder.Services.AddScoped<IPublicidadRepository, PublicidadRepository>();
 
             // DI Services
             builder.Services.AddScoped<IPasswordHasher, BusinessLogic.Security.PasswordHasher>();
@@ -45,6 +46,7 @@ namespace API
             builder.Services.AddScoped<IVeedorService, VeedorService>();
             builder.Services.AddScoped<IPartidoService, PartidoService>();
             builder.Services.AddScoped<IIncidenciaService, IncidenciaService>();
+            builder.Services.AddScoped<IPublicidadService, PublicidadService>();
 
             var app = builder.Build();
 
