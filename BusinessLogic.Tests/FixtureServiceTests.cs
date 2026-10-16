@@ -351,5 +351,285 @@ namespace BusinessLogic.Tests
             _torneoRepositoryMock.Verify(r => r.GetByIdAsync(torneoId), Times.Once);
             _partidoRepositoryMock.Verify(r => r.GetPartidosByTorneoIdAsync(It.IsAny<Guid>()), Times.Never);
         }
+
+        #region Pruebas Unitarias CU-16 (Generar Fixture Automático)
+
+        [Fact]
+        public async Task GenerarFixtureAsync_WithValidData_ReturnsCreatedFixtureAndLocksTournament()
+        {
+            // Arrange (CU-16 Flujo Principal)
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Apertura Oficial",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                Estado = EstadoTorneo.InscripcionesCerradas,
+                Equipos = new List<Equipo>
+                {
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 1", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 2", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 3", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 4", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId }
+                }
+            };
+
+            var dto = new FixtureParametrosDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                FranjasHorarias = new List<string> { "14:00", "16:00" },
+                CanchasDisponibles = new List<string> { "Cancha 1", "Cancha 2" }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync(torneo);
+            _torneoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Torneo>())).Returns(Task.CompletedTask);
+            _partidoRepositoryMock.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>())).Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _fixtureService.GenerarFixtureAsync(torneoId, dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(torneoId, result.TorneoId);
+            Assert.Equal(EstadoTorneo.EnDesarrollo.ToString(), result.EstadoTorneo);
+            Assert.True(result.CantidadPartidosProgramados > 0);
+            Assert.Equal(EstadoTorneo.EnDesarrollo, torneo.Estado);
+
+            _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.Is<Torneo>(t => t.Estado == EstadoTorneo.EnDesarrollo)), Times.Once);
+            _partidoRepositoryMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GenerarFixtureAsync_WhenTorneoDoesNotExist_ThrowsTorneoNotFoundException()
+        {
+            // Arrange (CU-16 Flujo 3a)
+            var torneoId = Guid.NewGuid();
+            var dto = new FixtureParametrosDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                FranjasHorarias = new List<string> { "14:00" },
+                CanchasDisponibles = new List<string> { "Cancha 1" }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync((Torneo?)null);
+            _torneoRepositoryMock.Setup(r => r.GetByIdAsync(torneoId)).ReturnsAsync((Torneo?)null);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<TorneoNotFoundException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
+
+            _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
+            _partidoRepositoryMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GenerarFixtureAsync_WhenTorneoNotClosed_ThrowsTorneoEstadoInvalidoException()
+        {
+            // Arrange (CU-16 Flujo 3b)
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Abierto",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                Estado = EstadoTorneo.Abierto,
+                Equipos = new List<Equipo>
+                {
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 1", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 2", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 3", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 4", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId }
+                }
+            };
+
+            var dto = new FixtureParametrosDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                FranjasHorarias = new List<string> { "14:00", "16:00" },
+                CanchasDisponibles = new List<string> { "Cancha 1", "Cancha 2" }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync(torneo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<TorneoEstadoInvalidoException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
+            Assert.Contains("Inscripciones Cerradas", ex.Message, StringComparison.OrdinalIgnoreCase);
+
+            _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
+            _partidoRepositoryMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GenerarFixtureAsync_WhenTeamsBelowFour_ThrowsEquiposInsuficientesException()
+        {
+            // Arrange (CU-16 Flujo 3c)
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Pocos Equipos",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                Estado = EstadoTorneo.InscripcionesCerradas,
+                Equipos = new List<Equipo>
+                {
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 1", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 2", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 3", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId }
+                }
+            };
+
+            var dto = new FixtureParametrosDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                FranjasHorarias = new List<string> { "14:00" },
+                CanchasDisponibles = new List<string> { "Cancha 1" }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync(torneo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<EquiposInsuficientesException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
+            Assert.Contains("al menos 4 equipos", ex.Message, StringComparison.OrdinalIgnoreCase);
+
+            _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
+            _partidoRepositoryMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GenerarFixtureAsync_WhenOddNumberOfTeams_AssignsRotativeByesCorrectly()
+        {
+            // Arrange (CU-16 Flujo 3d)
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Liga 5 Equipos",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                Estado = EstadoTorneo.InscripcionesCerradas,
+                Equipos = new List<Equipo>
+                {
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 1", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 2", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 3", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 4", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 5", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId }
+                }
+            };
+
+            var dto = new FixtureParametrosDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                FranjasHorarias = new List<string> { "14:00", "16:00", "18:00" },
+                CanchasDisponibles = new List<string> { "Cancha 1", "Cancha 2" }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync(torneo);
+            _torneoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Torneo>())).Returns(Task.CompletedTask);
+            _partidoRepositoryMock.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>())).Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _fixtureService.GenerarFixtureAsync(torneoId, dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(5, result.TotalJornadas);
+            Assert.Equal(5, result.Descansos.Count);
+
+            var equiposDescansados = result.Descansos.Select(d => d.Split("Descansa ")[1]).Distinct().ToList();
+            Assert.Equal(5, equiposDescansados.Count);
+        }
+
+        [Fact]
+        public async Task GenerarFixtureAsync_WhenNonPowerOfTwoBrackets_CalculatesByesCorrectly()
+        {
+            // Arrange (CU-16 Flujo 3e)
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Copa 5 Equipos",
+                Disciplina = Disciplina.ESports,
+                Modalidad = Modalidad.EliminacionDirecta,
+                CupoMaximo = 8,
+                Estado = EstadoTorneo.InscripcionesCerradas,
+                Equipos = new List<Equipo>
+                {
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 1", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 2", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 3", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 4", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 5", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId }
+                }
+            };
+
+            var dto = new FixtureParametrosDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                FranjasHorarias = new List<string> { "14:00" },
+                CanchasDisponibles = new List<string> { "Servidor 1" }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync(torneo);
+            _torneoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Torneo>())).Returns(Task.CompletedTask);
+            _partidoRepositoryMock.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>())).Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _fixtureService.GenerarFixtureAsync(torneoId, dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(3, result.PasesDirectos.Count); // 8 - 5 = 3 Byes
+            Assert.Equal(1, result.CantidadPartidosProgramados); // 1 partido en ronda 1
+        }
+
+        [Fact]
+        public async Task GenerarFixtureAsync_WhenInsufficientTimeSlots_ThrowsDisponibilidadHorariaInsuficienteException()
+        {
+            // Arrange (CU-16 Flujo 3f)
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Conflicto Horario",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                Estado = EstadoTorneo.InscripcionesCerradas,
+                Equipos = new List<Equipo>
+                {
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 1", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 2", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 3", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo 4", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId }
+                }
+            };
+
+            // 4 equipos en Liga = 2 partidos por ronda (mismo día).
+            // Capacidad configurada: 1 cancha * 1 horario = 1 partido disponible por día -> Insuficiente!
+            var dto = new FixtureParametrosDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                FranjasHorarias = new List<string> { "14:00" },
+                CanchasDisponibles = new List<string> { "Cancha 1" }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync(torneo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<DisponibilidadHorariaInsuficienteException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
+            Assert.Contains("Disponibilidad horaria insuficiente", ex.Message, StringComparison.OrdinalIgnoreCase);
+
+            _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
+            _partidoRepositoryMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>()), Times.Never);
+        }
+
+        #endregion
     }
 }
