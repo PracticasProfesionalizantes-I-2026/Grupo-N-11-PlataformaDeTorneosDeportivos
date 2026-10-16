@@ -53,4 +53,20 @@ namespace Shared.DTOs
         public string? SedeAsignada { get; set; }
         public DateTime FechaCreacion { get; set; }
     }
+
+    public class PartidoCronogramaResponseDTO
+    {
+        public Guid Id { get; set; }
+        public Guid TorneoId { get; set; }
+        public string TorneoNombre { get; set; } = string.Empty;
+        public Guid? EquipoLocalId { get; set; }
+        public string EquipoLocalNombre { get; set; } = string.Empty;
+        public Guid? EquipoVisitanteId { get; set; }
+        public string EquipoVisitanteNombre { get; set; } = string.Empty;
+        public DateTime FechaHora { get; set; }
+        public string Sede { get; set; } = string.Empty;
+        public int Ronda { get; set; }
+        public string Estado { get; set; } = string.Empty;
+        public Guid? VeedorId { get; set; }
+    }
 }

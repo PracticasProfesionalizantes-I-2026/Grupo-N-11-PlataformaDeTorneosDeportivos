@@ -15,13 +15,16 @@ namespace BusinessLogic.Services
     {
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly IPasswordHasher _passwordHasher;
+        private readonly IPartidoRepository _partidoRepository;
 
         public VeedorService(
             IUsuarioRepository usuarioRepository,
-            IPasswordHasher passwordHasher)
+            IPasswordHasher passwordHasher,
+            IPartidoRepository partidoRepository)
         {
             _usuarioRepository = usuarioRepository;
             _passwordHasher = passwordHasher;
+            _partidoRepository = partidoRepository;
         }
 
         public async Task<VeedorResponseDTO> CreateVeedorAsync(VeedorCreateDTO dto)
@@ -129,6 +132,67 @@ namespace BusinessLogic.Services
         {
             var veedores = await _usuarioRepository.FindAsync(u => u.Rol == RolUsuario.Veedor);
             return veedores.Select(MapToResponseDTO);
+        }
+
+        public async Task<IEnumerable<PartidoCronogramaResponseDTO>> GetPartidosByVeedorAsync(
+            Guid veedorId, 
+            DateTime? fecha = null, 
+            Guid? torneoId = null, 
+            Guid? currentUserId = null, 
+            string? currentUserRol = null)
+        {
+            // RN Paso 3a: Acceso no autorizado (HTTP 403 Forbidden)
+            if (currentUserId.HasValue && 
+                currentUserId.Value != veedorId && 
+                !string.Equals(currentUserRol, RolUsuario.Organizador.ToString(), StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(currentUserRol, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ForbiddenException("No tiene permisos para consultar el cronograma de otro veedor.");
+            }
+
+            // Validar existencia del Veedor
+            var veedor = await _usuarioRepository.GetByIdAsync(veedorId);
+            if (veedor == null || veedor.Rol != RolUsuario.Veedor)
+            {
+                throw new NotFoundException($"No se encontró el veedor con ID {veedorId}");
+            }
+
+            // Extraer los torneos asignados al veedor
+            var torneosIds = new List<Guid>();
+            if (!string.IsNullOrWhiteSpace(veedor.TorneosAsignadosIds))
+            {
+                var ids = veedor.TorneosAsignadosIds.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var idStr in ids)
+                {
+                    if (Guid.TryParse(idStr, out var tId))
+                    {
+                        torneosIds.Add(tId);
+                    }
+                }
+            }
+
+            var partidos = await _partidoRepository.GetPartidosByVeedorAsync(veedorId, torneosIds, fecha, torneoId);
+
+            return partidos.Select(MapToPartidoCronogramaDTO);
+        }
+
+        private static PartidoCronogramaResponseDTO MapToPartidoCronogramaDTO(Partido partido)
+        {
+            return new PartidoCronogramaResponseDTO
+            {
+                Id = partido.Id,
+                TorneoId = partido.TorneoId,
+                TorneoNombre = partido.Torneo?.Nombre ?? string.Empty,
+                EquipoLocalId = partido.EquipoLocalId,
+                EquipoLocalNombre = partido.EquipoLocal?.Nombre ?? "Equipo Local",
+                EquipoVisitanteId = partido.EquipoVisitanteId,
+                EquipoVisitanteNombre = partido.EquipoVisitante?.Nombre ?? "Equipo Visitante",
+                FechaHora = partido.FechaHora,
+                Sede = partido.Sede,
+                Ronda = partido.Ronda,
+                Estado = partido.Estado.ToString(),
+                VeedorId = partido.VeedorId
+            };
         }
 
         private static VeedorResponseDTO MapToResponseDTO(Usuario usuario)

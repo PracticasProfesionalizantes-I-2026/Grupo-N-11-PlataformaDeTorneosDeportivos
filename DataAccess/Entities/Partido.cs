@@ -15,6 +15,9 @@ namespace DataAccess.Entities
         public Guid? EquipoVisitanteId { get; set; }
         public Equipo? EquipoVisitante { get; set; }
 
+        public Guid? VeedorId { get; set; }
+        public Usuario? Veedor { get; set; }
+
         public DateTime FechaHora { get; set; }
         public string Sede { get; set; } = string.Empty;
         public int Ronda { get; set; }

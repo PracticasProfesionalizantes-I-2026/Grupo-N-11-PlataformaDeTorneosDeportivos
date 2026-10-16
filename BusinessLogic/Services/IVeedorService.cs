@@ -12,5 +12,6 @@ namespace BusinessLogic.Services
         Task DeactivateVeedorAsync(Guid id);
         Task<VeedorResponseDTO> GetByIdAsync(Guid id);
         Task<IEnumerable<VeedorResponseDTO>> GetAllAsync();
+        Task<IEnumerable<PartidoCronogramaResponseDTO>> GetPartidosByVeedorAsync(Guid veedorId, DateTime? fecha = null, Guid? torneoId = null, Guid? currentUserId = null, string? currentUserRol = null);
     }
 }

@@ -17,19 +17,22 @@ namespace BusinessLogic.Tests
     {
         private readonly Mock<IUsuarioRepository> _usuarioRepositoryMock;
         private readonly Mock<IPasswordHasher> _passwordHasherMock;
+        private readonly Mock<IPartidoRepository> _partidoRepositoryMock;
         private readonly VeedorService _veedorService;
 
         public VeedorServiceTests()
         {
             _usuarioRepositoryMock = new Mock<IUsuarioRepository>();
             _passwordHasherMock = new Mock<IPasswordHasher>();
+            _partidoRepositoryMock = new Mock<IPartidoRepository>();
 
             _passwordHasherMock.Setup(p => p.HashPassword(It.IsAny<string>()))
                 .Returns("hashed_secret_password");
 
             _veedorService = new VeedorService(
                 _usuarioRepositoryMock.Object,
-                _passwordHasherMock.Object);
+                _passwordHasherMock.Object,
+                _partidoRepositoryMock.Object);
         }
 
         [Fact]
@@ -188,6 +191,127 @@ namespace BusinessLogic.Tests
                 u.Id == veedorId &&
                 u.Activo == false
             )), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetPartidosByVeedorAsync_ReturnsListaPartidos()
+        {
+            // Arrange
+            var veedorId = Guid.NewGuid();
+            var torneoId = Guid.NewGuid();
+            var veedor = new Usuario
+            {
+                Id = veedorId,
+                Nombre = "Carlos",
+                Apellido = "Veedor",
+                Rol = RolUsuario.Veedor,
+                Activo = true,
+                TorneosAsignadosIds = torneoId.ToString()
+            };
+
+            var partidos = new List<Partido>
+            {
+                new Partido
+                {
+                    Id = Guid.NewGuid(),
+                    TorneoId = torneoId,
+                    Torneo = new Torneo { Id = torneoId, Nombre = "Torneo Apertura" },
+                    EquipoLocalId = Guid.NewGuid(),
+                    EquipoLocal = new Equipo { Nombre = "Equipo A" },
+                    EquipoVisitanteId = Guid.NewGuid(),
+                    EquipoVisitante = new Equipo { Nombre = "Equipo B" },
+                    FechaHora = DateTime.Today.AddHours(14),
+                    Sede = "Cancha 1",
+                    Ronda = 1,
+                    Estado = EstadoPartido.Pendiente,
+                    VeedorId = veedorId
+                }
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByIdAsync(veedorId))
+                .ReturnsAsync(veedor);
+
+            _partidoRepositoryMock.Setup(r => r.GetPartidosByVeedorAsync(veedorId, It.IsAny<IEnumerable<Guid>>(), null, null))
+                .ReturnsAsync(partidos);
+
+            // Act
+            var result = await _veedorService.GetPartidosByVeedorAsync(veedorId, null, null, veedorId, "Veedor");
+
+            // Assert
+            Assert.NotNull(result);
+            var list = Assert.IsAssignableFrom<IEnumerable<PartidoCronogramaResponseDTO>>(result);
+            Assert.Single(list);
+            var partidoDto = list.First();
+            Assert.Equal("Torneo Apertura", partidoDto.TorneoNombre);
+            Assert.Equal("Equipo A", partidoDto.EquipoLocalNombre);
+            Assert.Equal("Equipo B", partidoDto.EquipoVisitanteNombre);
+            Assert.Equal("Cancha 1", partidoDto.Sede);
+            Assert.Equal("Pendiente", partidoDto.Estado);
+            Assert.Equal(veedorId, partidoDto.VeedorId);
+
+            _usuarioRepositoryMock.Verify(r => r.GetByIdAsync(veedorId), Times.Once);
+            _partidoRepositoryMock.Verify(r => r.GetPartidosByVeedorAsync(veedorId, It.IsAny<IEnumerable<Guid>>(), null, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetPartidosByVeedorAsync_WhenEmpty_ReturnsEmptyList()
+        {
+            // Arrange
+            var veedorId = Guid.NewGuid();
+            var veedor = new Usuario
+            {
+                Id = veedorId,
+                Nombre = "Carlos",
+                Apellido = "Veedor",
+                Rol = RolUsuario.Veedor,
+                Activo = true
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByIdAsync(veedorId))
+                .ReturnsAsync(veedor);
+
+            _partidoRepositoryMock.Setup(r => r.GetPartidosByVeedorAsync(veedorId, It.IsAny<IEnumerable<Guid>>(), null, null))
+                .ReturnsAsync(new List<Partido>());
+
+            // Act
+            var result = await _veedorService.GetPartidosByVeedorAsync(veedorId, null, null, veedorId, "Veedor");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Empty(result);
+            _partidoRepositoryMock.Verify(r => r.GetPartidosByVeedorAsync(veedorId, It.IsAny<IEnumerable<Guid>>(), null, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetPartidosByVeedorAsync_WithDifferentUserId_ThrowsForbidden()
+        {
+            // Arrange
+            var veedorId = Guid.NewGuid();
+            var otherUserId = Guid.NewGuid();
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+                _veedorService.GetPartidosByVeedorAsync(veedorId, null, null, otherUserId, "Veedor"));
+
+            Assert.Equal("No tiene permisos para consultar el cronograma de otro veedor.", ex.Message);
+            _usuarioRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
+            _partidoRepositoryMock.Verify(r => r.GetPartidosByVeedorAsync(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), null, null), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetPartidosByVeedorAsync_WhenVeedorNotFound_ThrowsNotFound()
+        {
+            // Arrange
+            var veedorId = Guid.NewGuid();
+
+            _usuarioRepositoryMock.Setup(r => r.GetByIdAsync(veedorId))
+                .ReturnsAsync((Usuario?)null);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<NotFoundException>(() =>
+                _veedorService.GetPartidosByVeedorAsync(veedorId, null, null, veedorId, "Veedor"));
+
+            Assert.Equal($"No se encontró el veedor con ID {veedorId}", ex.Message);
         }
     }
 }
