@@ -1,0 +1,35 @@
+﻿meta {
+  name: CU-04 - Crear Torneo Disciplina Inexistente (404)
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/torneos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Torneo Sin Disciplina",
+    "disciplinaId": 9999,
+    "modalidad": 0,
+    "cupoMaximo": 8,
+    "esPago": false
+  }
+}
+
+tests {
+  test("Status code is 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+}

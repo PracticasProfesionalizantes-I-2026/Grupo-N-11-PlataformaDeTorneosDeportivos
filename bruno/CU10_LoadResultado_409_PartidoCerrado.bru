@@ -1,0 +1,32 @@
+﻿meta {
+  name: CU-10 - Partido Ya Finalizado o Cancelado (409)
+  type: http
+  seq: 47
+}
+
+put {
+  url: {{baseUrl}}/partidos/{{partidoId}}/resultado
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "marcadorA": 2,
+    "marcadorB": 2
+  }
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}

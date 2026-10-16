@@ -1,0 +1,35 @@
+﻿meta {
+  name: CU-04 - Crear Torneo Nombre Duplicado (409)
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{baseUrl}}/torneos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Copa America",
+    "disciplinaId": 1,
+    "modalidad": 0,
+    "cupoMaximo": 16,
+    "esPago": false
+  }
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}

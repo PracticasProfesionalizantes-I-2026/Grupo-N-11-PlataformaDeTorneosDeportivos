@@ -1,0 +1,32 @@
+﻿meta {
+  name: CU-10 - Empate No Permitido en Eliminatoria (409)
+  type: http
+  seq: 48
+}
+
+put {
+  url: {{baseUrl}}/partidos/{{partidoId}}/resultado
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "marcadorA": 1,
+    "marcadorB": 1
+  }
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}

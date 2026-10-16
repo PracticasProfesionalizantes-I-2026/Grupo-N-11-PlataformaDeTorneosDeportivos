@@ -1,0 +1,34 @@
+﻿meta {
+  name: CU-05 - Jugadores Insuficientes para Disciplina (422)
+  type: http
+  seq: 32
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Equipo Incompleto",
+    "jugadores": [
+      { "nombre": "Solo", "apellido": "Uno", "dni": "10000001" }
+    ]
+  }
+}
+
+tests {
+  test("Status code is 422", function() {
+    expect(res.getStatus()).to.equal(422);
+  });
+}

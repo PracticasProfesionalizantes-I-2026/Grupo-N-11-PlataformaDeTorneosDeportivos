@@ -1,0 +1,35 @@
+﻿meta {
+  name: CU-05 - DNI Duplicado en la Misma Lista (400)
+  type: http
+  seq: 27
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Equipo con DNI Repetido",
+    "jugadores": [
+      { "nombre": "Jugador 1", "apellido": "Test", "dni": "99999999" },
+      { "nombre": "Jugador 2", "apellido": "Test", "dni": "99999999" }
+    ]
+  }
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

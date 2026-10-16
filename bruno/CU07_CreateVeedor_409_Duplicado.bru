@@ -1,0 +1,34 @@
+﻿meta {
+  name: CU-07 - Crear Veedor Duplicado (409)
+  type: http
+  seq: 39
+}
+
+post {
+  url: {{baseUrl}}/veedores
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Roberto",
+    "apellido": "Gomez",
+    "dni": "33444555",
+    "email": "veedor.roberto@torneos.com"
+  }
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}

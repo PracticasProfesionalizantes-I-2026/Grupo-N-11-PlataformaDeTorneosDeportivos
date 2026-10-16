@@ -1,0 +1,35 @@
+﻿meta {
+  name: CU-16 - Generar Fixture Automatico Exitoso RN-08 (201)
+  type: http
+  seq: 66
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/fixture
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "fechaInicio": "2026-12-01T09:00:00Z",
+    "diasJuego": ["Sabado", "Domingo"],
+    "franjasHorarias": ["09:00", "11:00", "15:00", "17:00"],
+    "canchasDisponibles": ["Cancha 1", "Cancha 2", "Estadio Central"],
+    "intervaloMinutos": 90
+  }
+}
+
+tests {
+  test("Status code is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

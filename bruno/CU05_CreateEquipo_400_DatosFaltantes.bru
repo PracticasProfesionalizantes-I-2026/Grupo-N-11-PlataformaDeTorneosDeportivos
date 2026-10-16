@@ -1,0 +1,32 @@
+﻿meta {
+  name: CU-05 - Datos Faltantes o Nomina Vacia (400)
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "",
+    "jugadores": []
+  }
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

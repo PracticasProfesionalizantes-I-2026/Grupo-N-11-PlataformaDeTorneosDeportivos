@@ -1,0 +1,35 @@
+﻿meta {
+  name: CU-11 - Registrar Incidencia Gol Exitoso (201)
+  type: http
+  seq: 49
+}
+
+post {
+  url: {{baseUrl}}/partidos/{{partidoId}}/incidencias
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "tipoIncidencia": 0,
+    "minuto": 34,
+    "jugadorId": "{{jugadorId}}",
+    "equipoId": "{{equipoId}}",
+    "observaciones": "Gol de cabeza"
+  }
+}
+
+tests {
+  test("Status code is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

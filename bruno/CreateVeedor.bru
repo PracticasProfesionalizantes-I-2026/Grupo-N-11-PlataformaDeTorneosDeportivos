@@ -1,13 +1,21 @@
 meta {
-  name: CreateVeedor
+  name: CU-07 - Crear Veedor Exitoso (201)
   type: http
   seq: 8
 }
 
 post {
-  url: http://localhost:5000/api/veedores
+  url: {{baseUrl}}/veedores
   body: json
-  auth: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
 }
 
 body:json {
@@ -19,4 +27,10 @@ body:json {
     "telefono": "1122334455",
     "sedeAsignada": "Cancha Central"
   }
+}
+
+tests {
+  test("Status code is 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
 }

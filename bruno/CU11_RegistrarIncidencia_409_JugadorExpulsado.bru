@@ -1,0 +1,35 @@
+﻿meta {
+  name: CU-11 - Incidencia Sobre Jugador Expulsado RN-07 (409)
+  type: http
+  seq: 53
+}
+
+post {
+  url: {{baseUrl}}/partidos/{{partidoId}}/incidencias
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "tipoIncidencia": 0,
+    "minuto": 75,
+    "jugadorId": "{{jugadorId}}",
+    "equipoId": "{{equipoId}}",
+    "observaciones": "Intento de gol tras expulsion"
+  }
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}

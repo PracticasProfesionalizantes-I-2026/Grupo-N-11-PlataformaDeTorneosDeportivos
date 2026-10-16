@@ -1,0 +1,32 @@
+﻿meta {
+  name: CU-08 - Parametros Fixture Invalidos (400)
+  type: http
+  seq: 40
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/generar-fixture
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "horarios": [],
+    "sedes": []
+  }
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

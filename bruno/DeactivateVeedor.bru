@@ -1,11 +1,25 @@
 meta {
-  name: DeactivateVeedor
+  name: CU-07 - Desactivar Veedor Exitoso (204)
   type: http
   seq: 10
 }
 
 delete {
-  url: http://localhost:5000/api/veedores/{{veedorId}}
+  url: {{baseUrl}}/veedores/{{veedorId}}
   body: none
-  auth: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+tests {
+  test("Status code is 204", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
 }

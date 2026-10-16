@@ -1,0 +1,21 @@
+﻿meta {
+  name: CU-12 - Consultar Fixture Torneo Inexistente (404)
+  type: http
+  seq: 57
+}
+
+get {
+  url: {{baseUrl}}/torneos/00000000-0000-0000-0000-000000000000/fixture
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+tests {
+  test("Status code is 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+}

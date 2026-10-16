@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Plataforma Torneos Deportivos",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

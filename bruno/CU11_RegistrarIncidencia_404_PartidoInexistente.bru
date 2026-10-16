@@ -1,0 +1,34 @@
+﻿meta {
+  name: CU-11 - Partido Inexistente (404)
+  type: http
+  seq: 51
+}
+
+post {
+  url: {{baseUrl}}/partidos/00000000-0000-0000-0000-000000000000/incidencias
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "tipoIncidencia": 0,
+    "minuto": 15,
+    "jugadorId": "{{jugadorId}}",
+    "equipoId": "{{equipoId}}"
+  }
+}
+
+tests {
+  test("Status code is 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+}

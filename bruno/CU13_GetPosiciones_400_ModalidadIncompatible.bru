@@ -1,0 +1,21 @@
+﻿meta {
+  name: CU-13 - Modalidad Incompatible con Consulta (400)
+  type: http
+  seq: 60
+}
+
+get {
+  url: {{baseUrl}}/torneos/{{torneoId}}/posiciones
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

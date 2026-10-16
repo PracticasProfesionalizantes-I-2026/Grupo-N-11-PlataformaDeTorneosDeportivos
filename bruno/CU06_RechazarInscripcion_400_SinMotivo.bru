@@ -1,0 +1,31 @@
+﻿meta {
+  name: CU-06 - Rechazar Sin Motivo Obligatorio (400)
+  type: http
+  seq: 37
+}
+
+patch {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos/{{equipoId}}/rechazar
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "motivoRechazo": ""
+  }
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

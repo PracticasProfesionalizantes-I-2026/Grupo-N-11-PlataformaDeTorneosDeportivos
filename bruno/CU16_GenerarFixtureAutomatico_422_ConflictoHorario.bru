@@ -1,0 +1,35 @@
+﻿meta {
+  name: CU-16 - Conflicto Horario Imposible Cumplir RN-09 (422)
+  type: http
+  seq: 70
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/fixture
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "fechaInicio": "2026-12-01T09:00:00Z",
+    "diasJuego": ["Lunes"],
+    "franjasHorarias": ["10:00"],
+    "canchasDisponibles": ["Cancha 1"],
+    "intervaloMinutos": 120
+  }
+}
+
+tests {
+  test("Status code is 422", function() {
+    expect(res.getStatus()).to.equal(422);
+  });
+}

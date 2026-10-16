@@ -1,0 +1,25 @@
+﻿meta {
+  name: CU-06 - Pago No Validado en Torneo Pago RN-06 (422)
+  type: http
+  seq: 36
+}
+
+patch {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos/{{equipoId}}/aprobar
+  body: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+tests {
+  test("Status code is 422", function() {
+    expect(res.getStatus()).to.equal(422);
+  });
+}

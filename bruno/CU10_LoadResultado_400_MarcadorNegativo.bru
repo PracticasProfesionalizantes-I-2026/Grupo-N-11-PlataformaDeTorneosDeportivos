@@ -1,0 +1,32 @@
+﻿meta {
+  name: CU-10 - Marcadores Negativos o Invalidos (400)
+  type: http
+  seq: 46
+}
+
+put {
+  url: {{baseUrl}}/partidos/{{partidoId}}/resultado
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "marcadorA": -2,
+    "marcadorB": 0
+  }
+}
+
+tests {
+  test("Status code is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

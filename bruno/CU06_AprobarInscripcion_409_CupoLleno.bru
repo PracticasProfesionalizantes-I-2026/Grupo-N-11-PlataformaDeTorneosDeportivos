@@ -1,0 +1,25 @@
+﻿meta {
+  name: CU-06 - Torneo con Cupo Lleno RN-06 (409)
+  type: http
+  seq: 35
+}
+
+patch {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos/{{equipoId}}/aprobar
+  body: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}
