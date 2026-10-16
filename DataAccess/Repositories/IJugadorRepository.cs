@@ -8,5 +8,6 @@ namespace DataAccess.Repositories
     public interface IJugadorRepository : IGenericRepository<Jugador>
     {
         Task<IEnumerable<Jugador>> GetJugadoresByTorneoIdAsync(Guid torneoId);
+        Task<Jugador?> GetByIdWithEquipoAndTorneoAsync(Guid id);
     }
 }

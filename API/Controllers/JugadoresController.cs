@@ -38,5 +38,12 @@ namespace API.Controllers
             await _jugadorService.DeleteAsync(id);
             return NoContent();
         }
+
+        [HttpGet("jugadores/{id:guid}/estadisticas")]
+        public async Task<IActionResult> GetEstadisticas(Guid id)
+        {
+            var estadisticas = await _jugadorService.GetEstadisticasAsync(id);
+            return Ok(estadisticas);
+        }
     }
 }

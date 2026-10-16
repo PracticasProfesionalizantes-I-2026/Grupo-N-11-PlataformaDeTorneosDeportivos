@@ -27,5 +27,13 @@ namespace DataAccess.Repositories
                 .Where(e => e.TorneoId == torneoId)
                 .ToListAsync();
         }
+
+        public async Task<Equipo?> GetByIdWithTorneoAndJugadoresAsync(Guid id)
+        {
+            return await _dbSet
+                .Include(e => e.Torneo)
+                .Include(e => e.Jugadores)
+                .FirstOrDefaultAsync(e => e.Id == id);
+        }
     }
 }

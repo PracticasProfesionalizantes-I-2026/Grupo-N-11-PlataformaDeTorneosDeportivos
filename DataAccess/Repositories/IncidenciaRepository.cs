@@ -33,5 +33,30 @@ namespace DataAccess.Repositories
                 .AsNoTracking()
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Incidencia>> GetByJugadorIdAsync(Guid jugadorId)
+        {
+            return await _dbSet
+                .Include(i => i.Partido)
+                    .ThenInclude(p => p.Torneo)
+                .Include(i => i.Equipo)
+                .Where(i => i.JugadorId == jugadorId)
+                .OrderBy(i => i.FechaRegistro)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Incidencia>> GetByJugadorDniAsync(string dni)
+        {
+            return await _dbSet
+                .Include(i => i.Jugador)
+                .Include(i => i.Partido)
+                    .ThenInclude(p => p.Torneo)
+                .Include(i => i.Equipo)
+                .Where(i => i.Jugador.Dni == dni)
+                .OrderBy(i => i.FechaRegistro)
+                .AsNoTracking()
+                .ToListAsync();
+        }
     }
 }

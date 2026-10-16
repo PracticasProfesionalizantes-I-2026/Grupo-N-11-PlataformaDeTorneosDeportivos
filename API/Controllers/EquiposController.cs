@@ -45,5 +45,12 @@ namespace API.Controllers
             var equipo = await _equipoService.CambiarEstadoAsync(id, estado);
             return Ok(equipo);
         }
+
+        [HttpGet("equipos/{id:guid}/estadisticas")]
+        public async Task<IActionResult> GetEstadisticas(Guid id)
+        {
+            var estadisticas = await _equipoService.GetEstadisticasAsync(id);
+            return Ok(estadisticas);
+        }
     }
 }

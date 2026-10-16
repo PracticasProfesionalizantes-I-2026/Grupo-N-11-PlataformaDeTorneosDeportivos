@@ -13,5 +13,6 @@ namespace BusinessLogic.Services
         Task<EquipoResponseDTO> CreateEquipoAsync(Guid torneoId, EquipoCreateDTO dto);
         Task<EquipoResponseDTO> CreateEquipoAsync(EquipoCreateDTO dto);
         Task<EquipoResponseDTO> CambiarEstadoAsync(Guid id, string nuevoEstado);
+        Task<EquipoEstadisticasDTO> GetEstadisticasAsync(Guid id);
     }
 }

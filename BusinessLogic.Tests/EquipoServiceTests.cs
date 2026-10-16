@@ -19,6 +19,7 @@ namespace BusinessLogic.Tests
         private readonly Mock<IEquipoRepository> _equipoRepositoryMock;
         private readonly Mock<ITorneoRepository> _torneoRepositoryMock;
         private readonly Mock<IJugadorRepository> _jugadorRepositoryMock;
+        private readonly Mock<IPartidoRepository> _partidoRepositoryMock;
         private readonly EquipoService _equipoService;
 
         public EquipoServiceTests()
@@ -26,11 +27,13 @@ namespace BusinessLogic.Tests
             _equipoRepositoryMock = new Mock<IEquipoRepository>();
             _torneoRepositoryMock = new Mock<ITorneoRepository>();
             _jugadorRepositoryMock = new Mock<IJugadorRepository>();
+            _partidoRepositoryMock = new Mock<IPartidoRepository>();
 
             _equipoService = new EquipoService(
                 _equipoRepositoryMock.Object,
                 _torneoRepositoryMock.Object,
-                _jugadorRepositoryMock.Object);
+                _jugadorRepositoryMock.Object,
+                _partidoRepositoryMock.Object);
         }
 
         [Fact]
@@ -369,6 +372,122 @@ namespace BusinessLogic.Tests
             // Act & Assert
             var ex = await Assert.ThrowsAsync<BusinessRuleConflictException>(() => _equipoService.CambiarEstadoAsync(equipoId, "InscritoYConfirmado"));
             Assert.Contains("mínimo de jugadores", ex.Message);
+        }
+
+        [Fact]
+        public async Task GetEstadisticasEquipoAsync_ReturnsConsolidatedData()
+        {
+            // Arrange (CU-14 Perfil de Equipo Flujo Principal)
+            var equipoId = Guid.NewGuid();
+            var torneoId = Guid.NewGuid();
+            var rival1Id = Guid.NewGuid();
+            var rival2Id = Guid.NewGuid();
+
+            var torneo = new Torneo { Id = torneoId, Nombre = "Liga Profesional 2026" };
+            var jugadores = new List<Jugador>
+            {
+                new() { Id = Guid.NewGuid(), Nombre = "Carlos", Apellido = "Tevez", Dni = "11111111", EquipoId = equipoId },
+                new() { Id = Guid.NewGuid(), Nombre = "Juan", Apellido = "Riquelme", Dni = "22222222", EquipoId = equipoId }
+            };
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Boca Juniors",
+                Logo = "https://example.com/boca.png",
+                TorneoId = torneoId,
+                Torneo = torneo,
+                Jugadores = jugadores
+            };
+
+            // Partido 1 (Local): Gana 3 - 1 (GF: 3, GC: 1)
+            var p1 = new Partido
+            {
+                Id = Guid.NewGuid(),
+                TorneoId = torneoId,
+                Torneo = torneo,
+                EquipoLocalId = equipoId,
+                EquipoVisitanteId = rival1Id,
+                MarcadorLocal = 3,
+                MarcadorVisitante = 1,
+                Estado = EstadoPartido.Finalizado
+            };
+
+            // Partido 2 (Local): Empata 1 - 1 (GF: 1, GC: 1)
+            var p2 = new Partido
+            {
+                Id = Guid.NewGuid(),
+                TorneoId = torneoId,
+                Torneo = torneo,
+                EquipoLocalId = equipoId,
+                EquipoVisitanteId = rival2Id,
+                MarcadorLocal = 1,
+                MarcadorVisitante = 1,
+                Estado = EstadoPartido.Finalizado
+            };
+
+            // Partido 3 (Visitante): Pierde 0 - 2 (GF: 0, GC: 2)
+            var p3 = new Partido
+            {
+                Id = Guid.NewGuid(),
+                TorneoId = torneoId,
+                Torneo = torneo,
+                EquipoLocalId = rival1Id,
+                EquipoVisitanteId = equipoId,
+                MarcadorLocal = 2,
+                MarcadorVisitante = 0,
+                Estado = EstadoPartido.Finalizado
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdWithTorneoAndJugadoresAsync(equipoId))
+                .ReturnsAsync(equipo);
+
+            _partidoRepositoryMock.Setup(r => r.GetPartidosByEquipoIdAsync(equipoId))
+                .ReturnsAsync(new List<Partido> { p1, p2, p3 });
+
+            // Act
+            var result = await _equipoService.GetEstadisticasAsync(equipoId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(equipoId, result.EquipoId);
+            Assert.Equal("Boca Juniors", result.Nombre);
+            Assert.Equal("https://example.com/boca.png", result.Logo);
+            Assert.Equal(torneoId, result.TorneoActualId);
+            Assert.Equal("Liga Profesional 2026", result.TorneoActual);
+
+            // Métricas
+            Assert.Equal(3, result.PartidosJugados);
+            Assert.Equal(1, result.Victorias);
+            Assert.Equal(1, result.Empates);
+            Assert.Equal(1, result.Derrotas);
+            Assert.Equal(4, result.GolesAFavor);
+            Assert.Equal(4, result.GolesEnContra);
+            Assert.Equal(0, result.DiferenciaGoles);
+
+            // Efectividad: (1*3 + 1) / (3*3) = 4/9 = 44.44%
+            Assert.Equal(44.44, result.Efectividad);
+            // Porcentaje Victorias: 1/3 = 33.33%
+            Assert.Equal(33.33, result.PorcentajeVictorias);
+
+            Assert.Equal(1, result.TorneosDisputados);
+            Assert.Contains("Liga Profesional 2026", result.HistorialTorneos);
+            Assert.Equal(2, result.Integrantes.Count);
+        }
+
+        [Fact]
+        public async Task GetEstadisticasEquipoAsync_WhenNotFound_ThrowsNotFoundException()
+        {
+            // Arrange (CU-14 Flujo Alternativo 3a)
+            var equipoId = Guid.NewGuid();
+            _equipoRepositoryMock.Setup(r => r.GetByIdWithTorneoAndJugadoresAsync(equipoId))
+                .ReturnsAsync((Equipo?)null);
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId))
+                .ReturnsAsync((Equipo?)null);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<NotFoundException>(() => 
+                _equipoService.GetEstadisticasAsync(equipoId));
         }
     }
 }

@@ -297,5 +297,84 @@ namespace API.IntegrationTests
             // Assert
             Assert.Equal(HttpStatusCode.Conflict, segundoResponse.StatusCode);
         }
+
+        [Fact]
+        public async Task GetEstadisticasEquipo_Returns200OK()
+        {
+            // Arrange
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var torneo = await CreateTestTorneoAsync($"Torneo Stats Equipo {Guid.NewGuid():N}", Disciplina.Futbol);
+            var equipo = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Equipo Stats {Guid.NewGuid():N}",
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado,
+                TorneoId = torneo.Id
+            };
+            db.Equipos.Add(equipo);
+
+            var jugador = new Jugador
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Enzo",
+                Apellido = "Fernandez",
+                Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8),
+                EquipoId = equipo.Id
+            };
+            db.Jugadores.Add(jugador);
+
+            var rival = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Rival {Guid.NewGuid():N}",
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado,
+                TorneoId = torneo.Id
+            };
+            db.Equipos.Add(rival);
+
+            var partido = new Partido
+            {
+                Id = Guid.NewGuid(),
+                TorneoId = torneo.Id,
+                EquipoLocalId = equipo.Id,
+                EquipoVisitanteId = rival.Id,
+                MarcadorLocal = 3,
+                MarcadorVisitante = 1,
+                Estado = EstadoPartido.Finalizado,
+                FechaHora = DateTime.UtcNow,
+                Sede = "Estadio Principal",
+                Ronda = 1
+            };
+            db.Partidos.Add(partido);
+
+            await db.SaveChangesAsync();
+
+            // Act
+            var response = await _client.GetAsync($"/api/equipos/{equipo.Id}/estadisticas");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var stats = await response.Content.ReadFromJsonAsync<EquipoEstadisticasDTO>();
+            Assert.NotNull(stats);
+            Assert.Equal(equipo.Id, stats.EquipoId);
+            Assert.Equal(1, stats.PartidosJugados);
+            Assert.Equal(1, stats.Victorias);
+            Assert.Equal(3, stats.GolesAFavor);
+            Assert.Equal(1, stats.GolesEnContra);
+            Assert.Equal(100.0, stats.Efectividad);
+            Assert.Single(stats.Integrantes);
+        }
+
+        [Fact]
+        public async Task GetEstadisticasEquipo_WhenDoesNotExist_Returns404NotFound()
+        {
+            // Act
+            var response = await _client.GetAsync($"/api/equipos/{Guid.NewGuid()}/estadisticas");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
     }
 }
