@@ -160,6 +160,18 @@ namespace BusinessLogic.Services
             return MapToResponseDTO(torneo, partidosGenerados, nombresEquipos);
         }
 
+        public async Task<IEnumerable<PartidoResponseDTO>> GetFixtureAsync(Guid torneoId)
+        {
+            var torneo = await _torneoRepository.GetByIdAsync(torneoId);
+            if (torneo == null)
+            {
+                throw new NotFoundException($"No se encontró el torneo con ID {torneoId}");
+            }
+
+            var partidos = await _partidoRepository.GetPartidosByTorneoIdAsync(torneoId);
+            return partidos.Select(MapToPartidoResponseDTO).ToList();
+        }
+
         private static GenerarFixtureResponseDTO MapToResponseDTO(
             Torneo torneo, 
             List<Partido> partidos, 
@@ -172,6 +184,27 @@ namespace BusinessLogic.Services
                 EstadoTorneo = torneo.Estado.ToString(),
                 TotalPartidosGenerados = partidos.Count,
                 Partidos = partidos.Select(p => MapToPartidoResponseDTO(p, nombresEquipos)).ToList()
+            };
+        }
+
+        private static PartidoResponseDTO MapToPartidoResponseDTO(Partido p)
+        {
+            return new PartidoResponseDTO
+            {
+                Id = p.Id,
+                TorneoId = p.TorneoId,
+                EquipoLocalId = p.EquipoLocalId,
+                EquipoLocalNombre = p.EquipoLocal?.Nombre ?? "Por Definir",
+                EquipoVisitanteId = p.EquipoVisitanteId,
+                EquipoVisitanteNombre = p.EquipoVisitante?.Nombre ?? "Por Definir",
+                FechaHora = p.FechaHora,
+                Sede = p.Sede,
+                Ronda = p.Ronda,
+                Estado = p.Estado.ToString(),
+                MarcadorLocal = p.MarcadorLocal,
+                MarcadorVisitante = p.MarcadorVisitante,
+                PenalesLocal = p.PenalesLocal,
+                PenalesVisitante = p.PenalesVisitante
             };
         }
 
@@ -188,7 +221,11 @@ namespace BusinessLogic.Services
                 FechaHora = p.FechaHora,
                 Sede = p.Sede,
                 Ronda = p.Ronda,
-                Estado = p.Estado.ToString()
+                Estado = p.Estado.ToString(),
+                MarcadorLocal = p.MarcadorLocal,
+                MarcadorVisitante = p.MarcadorVisitante,
+                PenalesLocal = p.PenalesLocal,
+                PenalesVisitante = p.PenalesVisitante
             };
         }
 

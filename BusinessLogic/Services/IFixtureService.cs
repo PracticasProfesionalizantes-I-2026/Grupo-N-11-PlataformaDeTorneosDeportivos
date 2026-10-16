@@ -7,5 +7,6 @@ namespace BusinessLogic.Services
     public interface IFixtureService
     {
         Task<GenerarFixtureResponseDTO> GenerarFixtureAsync(Guid torneoId, GenerarFixtureRequestDTO dto);
+        Task<IEnumerable<PartidoResponseDTO>> GetFixtureAsync(Guid torneoId);
     }
 }
