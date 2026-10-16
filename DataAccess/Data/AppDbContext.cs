@@ -12,6 +12,7 @@ namespace DataAccess.Data
         public DbSet<Jugador> Jugadores { get; set; } = null!;
         public DbSet<Usuario> Usuarios { get; set; } = null!;
         public DbSet<Partido> Partidos { get; set; } = null!;
+        public DbSet<Incidencia> Incidencias { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

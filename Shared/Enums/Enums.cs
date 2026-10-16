@@ -43,5 +43,15 @@ namespace Shared.Enums
         Finalizado,
         Cancelado
     }
+
+    public enum TipoIncidencia
+    {
+        Gol = 1,
+        Punto = 2,
+        TarjetaAmarilla = 3,
+        TarjetaRoja = 4,
+        Falta = 5,
+        Sustitucion = 6
+    }
 }
 
