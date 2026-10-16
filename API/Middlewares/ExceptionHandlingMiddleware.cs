@@ -46,6 +46,8 @@ namespace API.Middlewares
                     code = HttpStatusCode.BadRequest; // 400
                     break;
                 case UsuarioDuplicadoException _:
+                case PartidoEstadoInvalidoException _:
+                case EmpateNoPermitidoException _:
                 case BusinessRuleConflictException _:
                     code = HttpStatusCode.Conflict; // 409
                     break;

@@ -13,6 +13,15 @@ namespace DataAccess.Repositories
         {
         }
 
+        public async Task<Partido?> GetByIdWithTorneoAndEquiposAsync(Guid id)
+        {
+            return await _dbSet
+                .Include(p => p.Torneo)
+                .Include(p => p.EquipoLocal)
+                .Include(p => p.EquipoVisitante)
+                .FirstOrDefaultAsync(p => p.Id == id);
+        }
+
         public async Task<IEnumerable<Partido>> GetPartidosByTorneoIdAsync(Guid torneoId)
         {
             return await _dbSet

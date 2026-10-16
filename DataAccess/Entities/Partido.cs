@@ -22,5 +22,10 @@ namespace DataAccess.Entities
         public string Sede { get; set; } = string.Empty;
         public int Ronda { get; set; }
         public EstadoPartido Estado { get; set; } = EstadoPartido.Pendiente;
+
+        public int? MarcadorLocal { get; set; }
+        public int? MarcadorVisitante { get; set; }
+        public int? PenalesLocal { get; set; }
+        public int? PenalesVisitante { get; set; }
     }
 }
