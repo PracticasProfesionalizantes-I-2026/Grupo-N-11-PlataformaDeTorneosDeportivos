@@ -59,6 +59,7 @@ namespace API.Middlewares
                     break;
                 case MinimoJugadoresInsuficienteException _:
                 case PagoRequeridoException _:
+                case JugadorNoAsignadoException _:
                     code = HttpStatusCode.UnprocessableEntity; // 422
                     break;
                 default:
