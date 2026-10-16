@@ -42,6 +42,7 @@ namespace API
             builder.Services.AddScoped<IFixtureService, FixtureService>();
             builder.Services.AddScoped<IInscripcionService, InscripcionService>();
             builder.Services.AddScoped<IVeedorService, VeedorService>();
+            builder.Services.AddScoped<IPartidoService, PartidoService>();
 
             var app = builder.Build();
 
