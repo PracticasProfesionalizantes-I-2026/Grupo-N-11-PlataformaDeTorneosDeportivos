@@ -70,6 +70,18 @@ namespace DataAccess.Repositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Partido>> GetPartidosByEquipoIdAsync(Guid equipoId)
+        {
+            return await _dbSet
+                .Include(p => p.Torneo)
+                .Include(p => p.EquipoLocal)
+                .Include(p => p.EquipoVisitante)
+                .Where(p => p.EquipoLocalId == equipoId || p.EquipoVisitanteId == equipoId)
+                .OrderBy(p => p.FechaHora)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task AddRangeAsync(IEnumerable<Partido> partidos)
         {
             await _dbSet.AddRangeAsync(partidos);

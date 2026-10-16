@@ -15,15 +15,18 @@ namespace BusinessLogic.Services
         private readonly IEquipoRepository _equipoRepository;
         private readonly ITorneoRepository _torneoRepository;
         private readonly IJugadorRepository _jugadorRepository;
+        private readonly IPartidoRepository? _partidoRepository;
 
         public EquipoService(
             IEquipoRepository equipoRepository,
             ITorneoRepository torneoRepository,
-            IJugadorRepository jugadorRepository)
+            IJugadorRepository jugadorRepository,
+            IPartidoRepository? partidoRepository = null)
         {
             _equipoRepository = equipoRepository;
             _torneoRepository = torneoRepository;
             _jugadorRepository = jugadorRepository;
+            _partidoRepository = partidoRepository;
         }
 
         public async Task<IEnumerable<EquipoResponseDTO>> GetByTorneoIdAsync(Guid torneoId)
@@ -171,6 +174,174 @@ namespace BusinessLogic.Services
             Disciplina.ESports => 3,
             _ => 1
         };
+
+        public async Task<EquipoEstadisticasDTO> GetEstadisticasAsync(Guid id)
+        {
+            var equipo = await _equipoRepository.GetByIdWithTorneoAndJugadoresAsync(id);
+            if (equipo == null)
+            {
+                equipo = await _equipoRepository.GetByIdAsync(id);
+            }
+            if (equipo == null)
+            {
+                throw new NotFoundException($"No se encontró el equipo con ID {id}");
+            }
+
+            Torneo? torneo = equipo.Torneo;
+            if (torneo == null && equipo.TorneoId != Guid.Empty)
+            {
+                torneo = await _torneoRepository.GetByIdAsync(equipo.TorneoId);
+            }
+
+            var jugadores = equipo.Jugadores?.ToList() ?? new List<Jugador>();
+            if (jugadores.Count == 0)
+            {
+                var recuperados = await _jugadorRepository.FindAsync(j => j.EquipoId == id);
+                jugadores = recuperados.ToList();
+            }
+
+            IEnumerable<Partido> partidos = _partidoRepository != null
+                ? await _partidoRepository.GetPartidosByEquipoIdAsync(id)
+                : Enumerable.Empty<Partido>();
+
+            var listaPartidos = partidos.ToList();
+            if (listaPartidos.Count == 0 && _partidoRepository != null && equipo.TorneoId != Guid.Empty)
+            {
+                var partidosTorneo = await _partidoRepository.GetPartidosByTorneoIdAsync(equipo.TorneoId);
+                listaPartidos = partidosTorneo
+                    .Where(p => p.EquipoLocalId == id || p.EquipoVisitanteId == id)
+                    .ToList();
+            }
+
+            int pj = 0;
+            int pg = 0;
+            int pe = 0;
+            int pp = 0;
+            int gf = 0;
+            int gc = 0;
+
+            var partidosFinalizados = listaPartidos
+                .Where(p => p.Estado == EstadoPartido.Finalizado || (p.MarcadorLocal.HasValue && p.MarcadorVisitante.HasValue))
+                .ToList();
+
+            foreach (var p in partidosFinalizados)
+            {
+                pj++;
+                bool esLocal = p.EquipoLocalId == id;
+                int golesFavor = esLocal ? (p.MarcadorLocal ?? 0) : (p.MarcadorVisitante ?? 0);
+                int golesContra = esLocal ? (p.MarcadorVisitante ?? 0) : (p.MarcadorLocal ?? 0);
+
+                gf += golesFavor;
+                gc += golesContra;
+
+                if (golesFavor > golesContra)
+                {
+                    pg++;
+                }
+                else if (golesFavor < golesContra)
+                {
+                    pp++;
+                }
+                else
+                {
+                    if (p.PenalesLocal.HasValue && p.PenalesVisitante.HasValue)
+                    {
+                        int penFavor = esLocal ? p.PenalesLocal.Value : p.PenalesVisitante.Value;
+                        int penContra = esLocal ? p.PenalesVisitante.Value : p.PenalesLocal.Value;
+                        if (penFavor > penContra)
+                            pg++;
+                        else if (penFavor < penContra)
+                            pp++;
+                        else
+                            pe++;
+                    }
+                    else
+                    {
+                        pe++;
+                    }
+                }
+            }
+
+            int dif = gf - gc;
+            double efectividad = pj > 0 ? Math.Round(((double)(pg * 3 + pe) / (pj * 3)) * 100, 2) : 0.0;
+            double porcentajeVictorias = pj > 0 ? Math.Round(((double)pg / pj) * 100, 2) : 0.0;
+
+            var torneosHistorial = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (torneo != null && !string.IsNullOrWhiteSpace(torneo.Nombre))
+            {
+                torneosHistorial.Add(torneo.Nombre);
+            }
+            foreach (var p in listaPartidos)
+            {
+                if (p.Torneo != null && !string.IsNullOrWhiteSpace(p.Torneo.Nombre))
+                {
+                    torneosHistorial.Add(p.Torneo.Nombre);
+                }
+            }
+
+            return MapToEstadisticasDTO(
+                equipo, 
+                torneo, 
+                pj, 
+                pg, 
+                pe, 
+                pp, 
+                gf, 
+                gc, 
+                dif, 
+                efectividad, 
+                porcentajeVictorias, 
+                torneosHistorial, 
+                jugadores);
+        }
+
+        private static EquipoEstadisticasDTO MapToEstadisticasDTO(
+            Equipo equipo,
+            Torneo? torneo,
+            int pj,
+            int pg,
+            int pe,
+            int pp,
+            int gf,
+            int gc,
+            int dif,
+            double efectividad,
+            double porcentajeVictorias,
+            IEnumerable<string> torneosHistorial,
+            IEnumerable<Jugador> jugadores)
+        {
+            var listaTorneos = torneosHistorial.ToList();
+            var listaIntegrantes = jugadores.Select(j => new JugadorResponseDTO
+            {
+                Id = j.Id,
+                Nombre = j.Nombre,
+                Apellido = j.Apellido,
+                Dni = j.Dni,
+                DocumentacionUrl = j.DocumentacionUrl,
+                EquipoId = j.EquipoId
+            }).ToList();
+
+            return new EquipoEstadisticasDTO
+            {
+                EquipoId = equipo.Id,
+                Nombre = equipo.Nombre,
+                Logo = equipo.Logo,
+                TorneoActualId = equipo.TorneoId,
+                TorneoActual = torneo?.Nombre ?? "Sin Torneo Asignado",
+                PartidosJugados = pj,
+                Victorias = pg,
+                Empates = pe,
+                Derrotas = pp,
+                GolesAFavor = gf,
+                GolesEnContra = gc,
+                DiferenciaGoles = dif,
+                Efectividad = efectividad,
+                PorcentajeVictorias = porcentajeVictorias,
+                TorneosDisputados = listaTorneos.Count,
+                HistorialTorneos = listaTorneos,
+                Integrantes = listaIntegrantes
+            };
+        }
 
         private static EquipoResponseDTO MapToResponseDTO(Equipo equipo)
         {

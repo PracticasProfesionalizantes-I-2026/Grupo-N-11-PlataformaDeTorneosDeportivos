@@ -9,5 +9,7 @@ namespace DataAccess.Repositories
     {
         Task<IEnumerable<Incidencia>> GetByPartidoIdAsync(Guid partidoId);
         Task<IEnumerable<Incidencia>> GetByPartidoYJugadorAsync(Guid partidoId, Guid jugadorId);
+        Task<IEnumerable<Incidencia>> GetByJugadorIdAsync(Guid jugadorId);
+        Task<IEnumerable<Incidencia>> GetByJugadorDniAsync(string dni);
     }
 }

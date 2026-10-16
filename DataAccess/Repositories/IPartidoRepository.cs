@@ -10,6 +10,7 @@ namespace DataAccess.Repositories
         Task<Partido?> GetByIdWithTorneoAndEquiposAsync(Guid id);
         Task<IEnumerable<Partido>> GetPartidosByTorneoIdAsync(Guid torneoId);
         Task<IEnumerable<Partido>> GetPartidosByVeedorAsync(Guid veedorId, IEnumerable<Guid>? torneoIds = null, DateTime? fecha = null, Guid? torneoId = null);
+        Task<IEnumerable<Partido>> GetPartidosByEquipoIdAsync(Guid equipoId);
         Task AddRangeAsync(IEnumerable<Partido> partidos);
     }
 }

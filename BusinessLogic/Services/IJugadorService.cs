@@ -10,5 +10,6 @@ namespace BusinessLogic.Services
         Task<IEnumerable<JugadorResponseDTO>> GetByEquipoIdAsync(Guid equipoId);
         Task<JugadorResponseDTO> CreateAsync(JugadorCreateDTO dto);
         Task DeleteAsync(Guid id);
+        Task<JugadorEstadisticasDTO> GetEstadisticasAsync(Guid id);
     }
 }

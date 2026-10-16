@@ -9,5 +9,6 @@ namespace DataAccess.Repositories
     {
         Task<bool> ExistsNombreInTorneoAsync(Guid torneoId, string nombre);
         Task<IEnumerable<Equipo>> GetByTorneoIdWithJugadoresAsync(Guid torneoId);
+        Task<Equipo?> GetByIdWithTorneoAndJugadoresAsync(Guid id);
     }
 }
