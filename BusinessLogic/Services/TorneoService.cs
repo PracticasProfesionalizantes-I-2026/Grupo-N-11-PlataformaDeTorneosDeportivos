@@ -14,13 +14,16 @@ namespace BusinessLogic.Services
     {
         private readonly ITorneoRepository _torneoRepository;
         private readonly ICuentaRecaudadoraService? _cuentaRecaudadoraService;
+        private readonly IPartidoRepository? _partidoRepository;
 
         public TorneoService(
             ITorneoRepository torneoRepository,
-            ICuentaRecaudadoraService? cuentaRecaudadoraService = null)
+            ICuentaRecaudadoraService? cuentaRecaudadoraService = null,
+            IPartidoRepository? partidoRepository = null)
         {
             _torneoRepository = torneoRepository;
             _cuentaRecaudadoraService = cuentaRecaudadoraService;
+            _partidoRepository = partidoRepository;
         }
 
         public async Task<IEnumerable<TorneoResponseDTO>> GetAllAsync()
@@ -174,6 +177,271 @@ namespace BusinessLogic.Services
                     throw new CuentaRecaudadoraInactivaException("No se puede publicar un torneo pago sin una cuenta recaudadora activa (RN-05)");
                 }
             }
+        }
+
+        public async Task<IEnumerable<PosicionTablaDTO>> GetPosicionesAsync(Guid torneoId)
+        {
+            var torneo = await _torneoRepository.GetTorneoConEquiposAsync(torneoId);
+            if (torneo == null)
+            {
+                torneo = await _torneoRepository.GetByIdAsync(torneoId);
+            }
+            if (torneo == null)
+            {
+                throw new NotFoundException($"No se encontró el torneo con ID {torneoId}");
+            }
+
+            if (torneo.Modalidad != Modalidad.Liga)
+            {
+                throw new ValidationException("La vista solicitada no es compatible con el formato del torneo.");
+            }
+
+            IEnumerable<Partido> partidos = _partidoRepository != null
+                ? await _partidoRepository.GetPartidosByTorneoIdAsync(torneoId)
+                : (torneo.Partidos ?? Enumerable.Empty<Partido>());
+
+            var listaPartidos = partidos.ToList();
+            if (listaPartidos.Count == 0 && torneo.Partidos != null && torneo.Partidos.Count > 0)
+            {
+                listaPartidos = torneo.Partidos.ToList();
+            }
+
+            var equipos = (torneo.Equipos != null && torneo.Equipos.Any(e => e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado))
+                ? torneo.Equipos.Where(e => e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado).ToList()
+                : (torneo.Equipos?.ToList() ?? new List<Equipo>());
+
+            var tabla = new Dictionary<Guid, PosicionTablaDTO>();
+
+            foreach (var eq in equipos)
+            {
+                tabla[eq.Id] = new PosicionTablaDTO
+                {
+                    EquipoId = eq.Id,
+                    EquipoNombre = eq.Nombre
+                };
+            }
+
+            var partidosFinalizados = listaPartidos
+                .Where(p => p.Estado == EstadoPartido.Finalizado || (p.MarcadorLocal.HasValue && p.MarcadorVisitante.HasValue))
+                .ToList();
+
+            foreach (var p in partidosFinalizados)
+            {
+                if (!p.EquipoLocalId.HasValue || !p.EquipoVisitanteId.HasValue)
+                    continue;
+
+                var localId = p.EquipoLocalId.Value;
+                var visId = p.EquipoVisitanteId.Value;
+
+                if (!tabla.TryGetValue(localId, out var localStats))
+                {
+                    localStats = new PosicionTablaDTO
+                    {
+                        EquipoId = localId,
+                        EquipoNombre = p.EquipoLocal?.Nombre ?? "Equipo Local"
+                    };
+                    tabla[localId] = localStats;
+                }
+
+                if (!tabla.TryGetValue(visId, out var visStats))
+                {
+                    visStats = new PosicionTablaDTO
+                    {
+                        EquipoId = visId,
+                        EquipoNombre = p.EquipoVisitante?.Nombre ?? "Equipo Visitante"
+                    };
+                    tabla[visId] = visStats;
+                }
+
+                int ml = p.MarcadorLocal ?? 0;
+                int mv = p.MarcadorVisitante ?? 0;
+
+                localStats.PartidosJugados++;
+                visStats.PartidosJugados++;
+
+                localStats.GolesAFavor += ml;
+                localStats.GolesEnContra += mv;
+                visStats.GolesAFavor += mv;
+                visStats.GolesEnContra += ml;
+
+                if (ml > mv)
+                {
+                    localStats.PartidosGanados++;
+                    localStats.Puntos += 3;
+                    visStats.PartidosPerdidos++;
+                }
+                else if (mv > ml)
+                {
+                    visStats.PartidosGanados++;
+                    visStats.Puntos += 3;
+                    localStats.PartidosPerdidos++;
+                }
+                else
+                {
+                    localStats.PartidosEmpatados++;
+                    localStats.Puntos += 1;
+                    visStats.PartidosEmpatados++;
+                    visStats.Puntos += 1;
+                }
+            }
+
+            foreach (var stat in tabla.Values)
+            {
+                stat.DiferenciaGoles = stat.GolesAFavor - stat.GolesEnContra;
+            }
+
+            var resultadoOrdenado = tabla.Values
+                .OrderByDescending(t => t.Puntos)
+                .ThenByDescending(t => t.DiferenciaGoles)
+                .ThenByDescending(t => t.GolesAFavor)
+                .ThenBy(t => t.EquipoNombre, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            for (int i = 0; i < resultadoOrdenado.Count; i++)
+            {
+                resultadoOrdenado[i].Posicion = i + 1;
+            }
+
+            return resultadoOrdenado;
+        }
+
+        public async Task<BracketTorneoDTO> GetLlavesAsync(Guid torneoId)
+        {
+            var torneo = await _torneoRepository.GetTorneoConEquiposAsync(torneoId);
+            if (torneo == null)
+            {
+                torneo = await _torneoRepository.GetByIdAsync(torneoId);
+            }
+            if (torneo == null)
+            {
+                throw new NotFoundException($"No se encontró el torneo con ID {torneoId}");
+            }
+
+            if (torneo.Modalidad != Modalidad.EliminacionDirecta)
+            {
+                throw new ValidationException("La vista solicitada no es compatible con el formato del torneo.");
+            }
+
+            IEnumerable<Partido> partidos = _partidoRepository != null
+                ? await _partidoRepository.GetPartidosByTorneoIdAsync(torneoId)
+                : (torneo.Partidos ?? Enumerable.Empty<Partido>());
+
+            var listaPartidos = partidos.ToList();
+            if (listaPartidos.Count == 0 && torneo.Partidos != null && torneo.Partidos.Count > 0)
+            {
+                listaPartidos = torneo.Partidos.ToList();
+            }
+
+            var nombresEquipos = torneo.Equipos?.ToDictionary(e => e.Id, e => e.Nombre) ?? new Dictionary<Guid, string>();
+
+            return MapToBracketTorneoDTO(torneo, listaPartidos, nombresEquipos);
+        }
+
+        private static BracketTorneoDTO MapToBracketTorneoDTO(Torneo torneo, List<Partido> partidos, Dictionary<Guid, string> nombresEquipos)
+        {
+            var rondasAgrupadas = partidos
+                .GroupBy(p => p.Ronda)
+                .OrderBy(g => g.Key)
+                .ToList();
+
+            int totalRondas = rondasAgrupadas.Any() ? rondasAgrupadas.Max(g => g.Key) : 1;
+
+            var rondasDto = new List<RondaBracketDTO>();
+
+            foreach (var grupo in rondasAgrupadas)
+            {
+                int numeroRonda = grupo.Key;
+                string nombreRonda = ObtenerNombreRonda(numeroRonda, totalRondas);
+
+                var partidosDto = grupo
+                    .OrderBy(p => p.FechaHora)
+                    .Select(p => MapToPartidoBracketDTO(p, nombresEquipos))
+                    .ToList();
+
+                rondasDto.Add(new RondaBracketDTO
+                {
+                    NumeroRonda = numeroRonda,
+                    NombreRonda = nombreRonda,
+                    Partidos = partidosDto
+                });
+            }
+
+            return new BracketTorneoDTO
+            {
+                TorneoId = torneo.Id,
+                TorneoNombre = torneo.Nombre,
+                TotalRondas = totalRondas,
+                Rondas = rondasDto
+            };
+        }
+
+        private static string ObtenerNombreRonda(int numeroRonda, int totalRondas)
+        {
+            int rondasRestantes = totalRondas - numeroRonda;
+            return rondasRestantes switch
+            {
+                0 => "Final",
+                1 => "Semifinal",
+                2 => "Cuartos de Final",
+                3 => "Octavos de Final",
+                _ => $"Ronda {numeroRonda}"
+            };
+        }
+
+        private static PartidoBracketDTO MapToPartidoBracketDTO(Partido p, Dictionary<Guid, string>? nombresEquipos = null)
+        {
+            Guid? ganadorId = null;
+            string? ganadorNombre = null;
+
+            string localNombre = p.EquipoLocal?.Nombre 
+                ?? (p.EquipoLocalId.HasValue && nombresEquipos != null && nombresEquipos.TryGetValue(p.EquipoLocalId.Value, out var nl) ? nl : "Por Definir");
+
+            string visNombre = p.EquipoVisitante?.Nombre 
+                ?? (p.EquipoVisitanteId.HasValue && nombresEquipos != null && nombresEquipos.TryGetValue(p.EquipoVisitanteId.Value, out var nv) ? nv : "Por Definir");
+
+            if (p.MarcadorLocal.HasValue && p.MarcadorVisitante.HasValue)
+            {
+                if (p.MarcadorLocal.Value > p.MarcadorVisitante.Value)
+                {
+                    ganadorId = p.EquipoLocalId;
+                    ganadorNombre = localNombre;
+                }
+                else if (p.MarcadorVisitante.Value > p.MarcadorLocal.Value)
+                {
+                    ganadorId = p.EquipoVisitanteId;
+                    ganadorNombre = visNombre;
+                }
+                else if (p.PenalesLocal.HasValue && p.PenalesVisitante.HasValue)
+                {
+                    if (p.PenalesLocal.Value > p.PenalesVisitante.Value)
+                    {
+                        ganadorId = p.EquipoLocalId;
+                        ganadorNombre = localNombre;
+                    }
+                    else if (p.PenalesVisitante.Value > p.PenalesLocal.Value)
+                    {
+                        ganadorId = p.EquipoVisitanteId;
+                        ganadorNombre = visNombre;
+                    }
+                }
+            }
+
+            return new PartidoBracketDTO
+            {
+                Id = p.Id,
+                Ronda = p.Ronda,
+                EquipoLocalId = p.EquipoLocalId,
+                EquipoLocalNombre = localNombre,
+                EquipoVisitanteId = p.EquipoVisitanteId,
+                EquipoVisitanteNombre = visNombre,
+                MarcadorLocal = p.MarcadorLocal,
+                MarcadorVisitante = p.MarcadorVisitante,
+                PenalesLocal = p.PenalesLocal,
+                PenalesVisitante = p.PenalesVisitante,
+                Estado = p.Estado.ToString(),
+                GanadorId = ganadorId,
+                GanadorNombre = ganadorNombre
+            };
         }
 
         private static TorneoResponseDTO MapToResponseDTO(Torneo torneo)

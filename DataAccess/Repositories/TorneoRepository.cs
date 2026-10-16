@@ -22,6 +22,9 @@ namespace DataAccess.Repositories
             return await _dbSet
                 .Include(t => t.Equipos)
                 .Include(t => t.Partidos)
+                    .ThenInclude(p => p.EquipoLocal)
+                .Include(t => t.Partidos)
+                    .ThenInclude(p => p.EquipoVisitante)
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
 
