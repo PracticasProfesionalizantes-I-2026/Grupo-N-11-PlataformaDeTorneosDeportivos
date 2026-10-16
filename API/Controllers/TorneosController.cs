@@ -67,5 +67,19 @@ namespace API.Controllers
             var fixture = await _fixtureService.GetFixtureAsync(id);
             return Ok(fixture);
         }
+
+        [HttpGet("{id}/posiciones")]
+        public async Task<IActionResult> GetPosiciones(Guid id)
+        {
+            var posiciones = await _torneoService.GetPosicionesAsync(id);
+            return Ok(posiciones);
+        }
+
+        [HttpGet("{id}/llaves")]
+        public async Task<IActionResult> GetLlaves(Guid id)
+        {
+            var llaves = await _torneoService.GetLlavesAsync(id);
+            return Ok(llaves);
+        }
     }
 }
