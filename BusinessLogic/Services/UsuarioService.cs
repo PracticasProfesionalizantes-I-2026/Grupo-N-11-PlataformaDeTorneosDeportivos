@@ -30,13 +30,13 @@ namespace BusinessLogic.Services
             var usuarioPorEmail = await _usuarioRepository.GetByEmailAsync(normalizedEmail);
             if (usuarioPorEmail != null)
             {
-                throw new BusinessRuleConflictException("El correo o DNI ya se encuentra registrado en la plataforma.");
+                throw new UsuarioDuplicadoException();
             }
 
             var usuarioPorDni = await _usuarioRepository.GetByDniAsync(normalizedDni);
             if (usuarioPorDni != null)
             {
-                throw new BusinessRuleConflictException("El correo o DNI ya se encuentra registrado en la plataforma.");
+                throw new UsuarioDuplicadoException();
             }
 
             // Hashear contraseña
@@ -59,7 +59,11 @@ namespace BusinessLogic.Services
 
             await _usuarioRepository.AddAsync(usuario);
 
-            // Mapeo manual de entidad a DTO de salida
+            return MapToResponseDTO(usuario);
+        }
+
+        private static UsuarioResponseDTO MapToResponseDTO(Usuario usuario)
+        {
             return new UsuarioResponseDTO
             {
                 Id = usuario.Id,

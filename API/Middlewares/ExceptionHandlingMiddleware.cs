@@ -45,6 +45,7 @@ namespace API.Middlewares
                 case ValidationException _:
                     code = HttpStatusCode.BadRequest; // 400
                     break;
+                case UsuarioDuplicadoException _:
                 case BusinessRuleConflictException _:
                     code = HttpStatusCode.Conflict; // 409
                     break;

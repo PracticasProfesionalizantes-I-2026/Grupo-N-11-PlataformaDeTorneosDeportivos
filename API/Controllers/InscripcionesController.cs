@@ -27,11 +27,6 @@ namespace API.Controllers
         [HttpPatch("rechazar")]
         public async Task<IActionResult> RechazarInscripcion(Guid torneoId, Guid equipoId, [FromBody] RechazarInscripcionDTO dto)
         {
-            if (dto == null || !ModelState.IsValid || string.IsNullOrWhiteSpace(dto.MotivoRechazo))
-            {
-                return BadRequest(ModelState);
-            }
-
             var result = await _inscripcionService.RechazarInscripcionAsync(torneoId, equipoId, dto);
             return Ok(result);
         }

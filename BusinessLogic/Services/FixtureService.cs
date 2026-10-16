@@ -157,25 +157,38 @@ namespace BusinessLogic.Services
 
             var nombresEquipos = equiposConfirmados.ToDictionary(e => e.Id, e => e.Nombre);
 
+            return MapToResponseDTO(torneo, partidosGenerados, nombresEquipos);
+        }
+
+        private static GenerarFixtureResponseDTO MapToResponseDTO(
+            Torneo torneo, 
+            List<Partido> partidos, 
+            Dictionary<Guid, string> nombresEquipos)
+        {
             return new GenerarFixtureResponseDTO
             {
                 TorneoId = torneo.Id,
                 Mensaje = "Fixture generado exitosamente y fase de inscripciones cerrada.",
                 EstadoTorneo = torneo.Estado.ToString(),
-                TotalPartidosGenerados = partidosGenerados.Count,
-                Partidos = partidosGenerados.Select(p => new PartidoResponseDTO
-                {
-                    Id = p.Id,
-                    TorneoId = p.TorneoId,
-                    EquipoLocalId = p.EquipoLocalId,
-                    EquipoLocalNombre = (p.EquipoLocalId.HasValue && nombresEquipos.TryGetValue(p.EquipoLocalId.Value, out var nLocal)) ? nLocal : "Equipo Local",
-                    EquipoVisitanteId = p.EquipoVisitanteId,
-                    EquipoVisitanteNombre = (p.EquipoVisitanteId.HasValue && nombresEquipos.TryGetValue(p.EquipoVisitanteId.Value, out var nVis)) ? nVis : "Equipo Visitante",
-                    FechaHora = p.FechaHora,
-                    Sede = p.Sede,
-                    Ronda = p.Ronda,
-                    Estado = p.Estado.ToString()
-                }).ToList()
+                TotalPartidosGenerados = partidos.Count,
+                Partidos = partidos.Select(p => MapToPartidoResponseDTO(p, nombresEquipos)).ToList()
+            };
+        }
+
+        private static PartidoResponseDTO MapToPartidoResponseDTO(Partido p, Dictionary<Guid, string> nombresEquipos)
+        {
+            return new PartidoResponseDTO
+            {
+                Id = p.Id,
+                TorneoId = p.TorneoId,
+                EquipoLocalId = p.EquipoLocalId,
+                EquipoLocalNombre = (p.EquipoLocalId.HasValue && nombresEquipos.TryGetValue(p.EquipoLocalId.Value, out var nLocal)) ? nLocal : "Equipo Local",
+                EquipoVisitanteId = p.EquipoVisitanteId,
+                EquipoVisitanteNombre = (p.EquipoVisitanteId.HasValue && nombresEquipos.TryGetValue(p.EquipoVisitanteId.Value, out var nVis)) ? nVis : "Equipo Visitante",
+                FechaHora = p.FechaHora,
+                Sede = p.Sede,
+                Ronda = p.Ronda,
+                Estado = p.Estado.ToString()
             };
         }
 
