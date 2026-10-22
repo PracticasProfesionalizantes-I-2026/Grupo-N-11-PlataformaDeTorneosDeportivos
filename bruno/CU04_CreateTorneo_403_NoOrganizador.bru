@@ -1,0 +1,37 @@
+meta {
+  name: CU-04 - Crear Torneo Rechazado por Rol No Organizador (403)
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/torneos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Torneo Intento Invalido",
+    "disciplina": 0,
+    "disciplinaId": 1,
+    "modalidad": 0,
+    "cupoMaximo": 8,
+    "esPago": false,
+    "costoInscripcion": 0
+  }
+}
+
+tests {
+  test("Status code is 403 Forbidden cuando el usuario no es Organizador", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

@@ -417,5 +417,63 @@ namespace API.IntegrationTests
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
+
+        [Fact]
+        public async Task CreateTorneo_WhenUserIsNotOrganizador_ShouldReturn403Forbidden()
+        {
+            // Arrange - Crear un usuario con rol de Capitan (no Organizador)
+            var capitanEmail = $"capitan_{Guid.NewGuid():N}@torneos.com";
+            var password = "Password123!";
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var hasher = scope.ServiceProvider.GetRequiredService<BusinessLogic.Security.IPasswordHasher>();
+
+                db.Usuarios.Add(new Usuario
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Pedro",
+                    Apellido = "Capitan",
+                    Dni = $"{Random.Shared.Next(10000000, 99999999)}",
+                    Email = capitanEmail,
+                    PasswordHash = hasher.HashPassword(password),
+                    Rol = RolUsuario.Capitan,
+                    Activo = true
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Iniciar sesión como Capitán para obtener su token JWT
+            var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequestDTO
+            {
+                EmailOrDni = capitanEmail,
+                Password = password
+            });
+            var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDTO>();
+            Assert.NotNull(loginResult);
+            Assert.Equal("Capitan", loginResult.Rol);
+
+            var dto = new TorneoCreateDTO
+            {
+                Nombre = $"Torneo Creado Por Capitan {Guid.NewGuid():N}",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.EliminacionDirecta,
+                CupoMaximo = 8,
+                EsPago = true,
+                CostoInscripcion = 1000m
+            };
+
+            // Act - El Capitán intenta crear un torneo con su token
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/torneos");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.Token);
+            request.Content = JsonContent.Create(dto);
+
+            var response = await _client.SendAsync(request);
+
+            // Assert - Debe responder 403 Forbidden (solo el Organizador puede crear torneos)
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
     }
 }
+
