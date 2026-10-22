@@ -376,5 +376,70 @@ namespace API.IntegrationTests
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
+
+        [Fact]
+        public async Task CreateEquipo_WhenUserIsVeedor_ShouldReturn403Forbidden()
+        {
+            // Arrange - Crear torneo
+            var torneo = await CreateTestTorneoAsync($"Torneo Veedor Test {Guid.NewGuid():N}", Disciplina.Futbol);
+
+            // Crear un usuario con rol de Veedor en la base de datos
+            var veedorEmail = $"veedor_{Guid.NewGuid():N}@torneos.com";
+            var password = "Password123!";
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var hasher = scope.ServiceProvider.GetRequiredService<BusinessLogic.Security.IPasswordHasher>();
+
+                db.Usuarios.Add(new Usuario
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Roberto",
+                    Apellido = "Veedor",
+                    Dni = $"{Random.Shared.Next(10000000, 99999999)}",
+                    Email = veedorEmail,
+                    PasswordHash = hasher.HashPassword(password),
+                    Rol = RolUsuario.Veedor,
+                    Activo = true
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Iniciar sesión como Veedor para obtener su token JWT
+            var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequestDTO
+            {
+                EmailOrDni = veedorEmail,
+                Password = password
+            });
+            var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDTO>();
+            Assert.NotNull(loginResult);
+            Assert.Equal("Veedor", loginResult.Rol);
+
+            var dto = new EquipoCreateDTO
+            {
+                Nombre = $"Equipo Veedor {Guid.NewGuid():N}",
+                LogoUrl = "https://example.com/logo.png",
+                TorneoId = torneo.Id,
+                Jugadores = new List<JugadorCreateDTO>
+                {
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
+                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
+                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
+                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
+                    new() { Nombre = "Diego", Apellido = "Romero", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) }
+                }
+            };
+
+            // Act - El Veedor intenta crear un equipo con su token
+            var request = new HttpRequestMessage(HttpMethod.Post, $"/api/torneos/{torneo.Id}/equipos");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.Token);
+            request.Content = JsonContent.Create(dto);
+
+            var response = await _client.SendAsync(request);
+
+            // Assert - Debe responder 403 Forbidden (no permitido a Veedores)
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
     }
 }
+

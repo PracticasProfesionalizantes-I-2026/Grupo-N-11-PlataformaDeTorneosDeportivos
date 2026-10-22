@@ -1,0 +1,58 @@
+meta {
+  name: CU-05 - Crear Equipo Rechazado por Rol Veedor (403)
+  type: http
+  seq: 32
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Equipo Creado por Veedor",
+    "jugadores": [
+      {
+        "nombre": "Juan",
+        "apellido": "Perez",
+        "dni": "99999991"
+      },
+      {
+        "nombre": "Carlos",
+        "apellido": "Lopez",
+        "dni": "99999992"
+      },
+      {
+        "nombre": "Lucas",
+        "apellido": "Gomez",
+        "dni": "99999993"
+      },
+      {
+        "nombre": "Marcos",
+        "apellido": "Diaz",
+        "dni": "99999994"
+      },
+      {
+        "nombre": "Diego",
+        "apellido": "Romero",
+        "dni": "99999995"
+      }
+    ]
+  }
+}
+
+tests {
+  test("Status code is 403 Forbidden cuando crea un veedor", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
