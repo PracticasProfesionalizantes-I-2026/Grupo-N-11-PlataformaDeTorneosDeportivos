@@ -1,0 +1,39 @@
+meta {
+  name: CU-08 - Generar Fixture Rechazado por Rol No Organizador (403)
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/generar-fixture
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "fechaInicio": "2026-11-01T10:00:00Z",
+    "horarios": [
+      "14:00",
+      "16:00"
+    ],
+    "sedes": [
+      "Cancha 1",
+      "Cancha 2"
+    ]
+  }
+}
+
+tests {
+  test("Status code is 403 Forbidden cuando el usuario no es Organizador", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

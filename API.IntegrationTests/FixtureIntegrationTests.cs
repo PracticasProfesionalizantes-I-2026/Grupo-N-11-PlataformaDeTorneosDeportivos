@@ -210,5 +210,63 @@ namespace API.IntegrationTests
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
+
+        [Fact]
+        public async Task GenerarFixture_WhenUserIsNotOrganizador_ShouldReturn403Forbidden()
+        {
+            // Arrange - Crear torneo con 4 equipos confirmados
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.Abierto, 4);
+
+            // Crear un usuario con rol de Capitan (no Organizador)
+            var capitanEmail = $"capitan_fixture_{Guid.NewGuid():N}@torneos.com";
+            var password = "Password123!";
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var hasher = scope.ServiceProvider.GetRequiredService<BusinessLogic.Security.IPasswordHasher>();
+
+                db.Usuarios.Add(new Usuario
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Esteban",
+                    Apellido = "Capitan",
+                    Dni = $"{Random.Shared.Next(10000000, 99999999)}",
+                    Email = capitanEmail,
+                    PasswordHash = hasher.HashPassword(password),
+                    Rol = RolUsuario.Capitan,
+                    Activo = true
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Iniciar sesión como Capitán para obtener su token JWT
+            var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequestDTO
+            {
+                EmailOrDni = capitanEmail,
+                Password = password
+            });
+            var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDTO>();
+            Assert.NotNull(loginResult);
+            Assert.Equal("Capitan", loginResult.Rol);
+
+            var dto = new GenerarFixtureRequestDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                Horarios = new List<string> { "14:00", "16:00" },
+                Sedes = new List<string> { "Cancha 1", "Cancha 2" }
+            };
+
+            // Act - El Capitán intenta generar el fixture enviando su token
+            var request = new HttpRequestMessage(HttpMethod.Post, $"/api/torneos/{torneo.Id}/generar-fixture");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.Token);
+            request.Content = JsonContent.Create(dto);
+
+            var response = await _client.SendAsync(request);
+
+            // Assert - Debe responder 403 Forbidden (solo permitido a Organizador)
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
     }
 }
+
