@@ -1,3 +1,6 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +22,26 @@ namespace API
 
             // Add services to the container.
             builder.Services.AddControllers();
+
+            // Authentication & Authorization
+            var secretKey = builder.Configuration["Jwt:SecretKey"] ?? "ClaveSecretaSuperSeguraParaTorneosDeportivos2026";
+            var keyBytes = Encoding.UTF8.GetBytes(secretKey);
+
+            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.RequireHttpsMetadata = false;
+                    options.SaveToken = true;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ClockSkew = TimeSpan.Zero
+                    };
+                });
+            builder.Services.AddAuthorization();
 
             // DbContext
             builder.Services.AddDbContext<AppDbContext>(options =>
@@ -61,6 +84,7 @@ namespace API
             // Exception Middleware
             app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+            app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
 

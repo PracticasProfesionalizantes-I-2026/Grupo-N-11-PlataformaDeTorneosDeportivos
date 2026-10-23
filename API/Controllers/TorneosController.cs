@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using BusinessLogic.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
 
@@ -34,6 +35,7 @@ namespace API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> CreateTorneo([FromBody] TorneoCreateDTO dto)
         {
             var torneo = await _torneoService.CreateTorneoAsync(dto);
@@ -41,6 +43,7 @@ namespace API.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> Update(Guid id, [FromBody] TorneoUpdateDTO dto)
         {
             var torneo = await _torneoService.UpdateAsync(id, dto);
@@ -48,6 +51,7 @@ namespace API.Controllers
         }
 
         [HttpDelete("{id:guid}")]
+        [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> Delete(Guid id)
         {
             await _torneoService.DeleteAsync(id);
@@ -55,6 +59,7 @@ namespace API.Controllers
         }
 
         [HttpPost("{id}/generar-fixture")]
+        [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> GenerarFixture(Guid id, [FromBody] GenerarFixtureRequestDTO dto)
         {
             var response = await _fixtureService.GenerarFixtureAsync(id, dto);

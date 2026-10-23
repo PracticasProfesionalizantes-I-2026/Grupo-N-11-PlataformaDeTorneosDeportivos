@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using BusinessLogic.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
 
@@ -18,6 +19,7 @@ namespace API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Veedor,Organizador,Administrador")]
         public async Task<IActionResult> RegistrarIncidencia(Guid partidoId, [FromBody] IncidenciaCreateDTO dto)
         {
             var response = await _incidenciaService.RegistrarIncidenciaAsync(partidoId, dto);

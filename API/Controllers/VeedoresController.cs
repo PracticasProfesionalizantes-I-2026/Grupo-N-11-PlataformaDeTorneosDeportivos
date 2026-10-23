@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using BusinessLogic.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
 
@@ -18,6 +19,7 @@ namespace API.Controllers
         }
 
         [HttpGet("{id:guid}")]
+        [Authorize(Roles = "Organizador,Administrador,Veedor")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var result = await _veedorService.GetByIdAsync(id);
@@ -25,6 +27,7 @@ namespace API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> GetAll()
         {
             var result = await _veedorService.GetAllAsync();
@@ -32,6 +35,7 @@ namespace API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> CreateVeedor([FromBody] VeedorCreateDTO dto)
         {
             var result = await _veedorService.CreateVeedorAsync(dto);
@@ -39,6 +43,7 @@ namespace API.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> UpdateVeedor(Guid id, [FromBody] VeedorUpdateDTO dto)
         {
             var result = await _veedorService.UpdateVeedorAsync(id, dto);
@@ -46,6 +51,7 @@ namespace API.Controllers
         }
 
         [HttpDelete("{id:guid}")]
+        [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> DeactivateVeedor(Guid id)
         {
             await _veedorService.DeactivateVeedorAsync(id);
@@ -53,6 +59,7 @@ namespace API.Controllers
         }
 
         [HttpGet("{id:guid}/partidos")]
+        [Authorize(Roles = "Veedor,Organizador,Administrador")]
         public async Task<IActionResult> GetPartidos(
             Guid id,
             [FromQuery] DateTime? fecha,

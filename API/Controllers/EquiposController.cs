@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using BusinessLogic.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
 
@@ -32,6 +33,7 @@ namespace API.Controllers
         }
 
         [HttpPost("torneos/{torneoId:guid}/equipos")]
+        [Authorize(Roles = "Capitan,Administrador")]
         public async Task<IActionResult> CreateEquipo(Guid torneoId, [FromBody] EquipoCreateDTO dto)
         {
             dto.TorneoId = torneoId;
@@ -40,6 +42,7 @@ namespace API.Controllers
         }
 
         [HttpPut("equipos/{id:guid}/estado")]
+        [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> CambiarEstado(Guid id, [FromBody] string estado)
         {
             var equipo = await _equipoService.CambiarEstadoAsync(id, estado);

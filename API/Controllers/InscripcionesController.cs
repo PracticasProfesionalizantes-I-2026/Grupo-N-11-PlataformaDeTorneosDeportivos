@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using BusinessLogic.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
 
@@ -8,6 +9,7 @@ namespace API.Controllers
 {
     [ApiController]
     [Route("api/torneos/{torneoId}/equipos/{equipoId}")]
+    [Authorize(Roles = "Organizador,Administrador")]
     public class InscripcionesController : ControllerBase
     {
         private readonly IInscripcionService _inscripcionService;

@@ -30,6 +30,15 @@ namespace API.IntegrationTests
                     options.UseInMemoryDatabase("InMemoryDbForTesting");
                 });
 
+                // Registrar esquema de autenticación de pruebas
+                services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = TestAuthHandler.DefaultScheme;
+                    options.DefaultChallengeScheme = TestAuthHandler.DefaultScheme;
+                    options.DefaultScheme = TestAuthHandler.DefaultScheme;
+                })
+                .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.DefaultScheme, options => { });
+
                 var sp = services.BuildServiceProvider();
                 using (var scope = sp.CreateScope())
                 {

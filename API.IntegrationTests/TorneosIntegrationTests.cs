@@ -474,6 +474,86 @@ namespace API.IntegrationTests
             // Assert - Debe responder 403 Forbidden (solo el Organizador puede crear torneos)
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
+
+        [Fact]
+        public async Task CreateTorneo_WhenUserIsVeedor_ShouldReturn403Forbidden()
+        {
+            // Arrange - Crear un usuario con rol Veedor
+            var veedorEmail = $"veedor_test_{Guid.NewGuid():N}@torneos.com";
+            var password = "Password123!";
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var hasher = scope.ServiceProvider.GetRequiredService<BusinessLogic.Security.IPasswordHasher>();
+
+                db.Usuarios.Add(new Usuario
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Juan",
+                    Apellido = "Veedor",
+                    Dni = $"{Random.Shared.Next(10000000, 99999999)}",
+                    Email = veedorEmail,
+                    PasswordHash = hasher.HashPassword(password),
+                    Rol = RolUsuario.Veedor,
+                    Activo = true
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Iniciar sesión como Veedor para obtener su token JWT
+            var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequestDTO
+            {
+                EmailOrDni = veedorEmail,
+                Password = password
+            });
+            var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDTO>();
+            Assert.NotNull(loginResult);
+            Assert.Equal("Veedor", loginResult.Rol);
+
+            var dto = new TorneoCreateDTO
+            {
+                Nombre = $"Torneo Creado Por Veedor {Guid.NewGuid():N}",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                EsPago = false
+            };
+
+            // Act - El Veedor intenta crear un torneo con su token
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/torneos");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.Token);
+            request.Content = JsonContent.Create(dto);
+
+            var response = await _client.SendAsync(request);
+
+            // Assert - Debe responder 403 Forbidden (el veedor no posee permisos para crear torneos)
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task CreateTorneo_WhenUserIsAnonymous_ShouldReturn401Unauthorized()
+        {
+            // Arrange
+            var dto = new TorneoCreateDTO
+            {
+                Nombre = $"Torneo Anonimo {Guid.NewGuid():N}",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                EsPago = false
+            };
+
+            // Act - Petición sin credenciales explícitas marcadas como anónimas
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/torneos");
+            request.Headers.Add("X-Test-Anonymous", "true");
+            request.Content = JsonContent.Create(dto);
+
+            var response = await _client.SendAsync(request);
+
+            // Assert - Debe responder 401 Unauthorized
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
     }
 }
 

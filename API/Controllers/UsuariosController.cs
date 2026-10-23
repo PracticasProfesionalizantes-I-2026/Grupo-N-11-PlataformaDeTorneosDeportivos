@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using BusinessLogic.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
 
@@ -17,6 +18,7 @@ namespace API.Controllers
         }
 
         [HttpPost("registro")]
+        [AllowAnonymous]
         public async Task<IActionResult> Registro([FromBody] UsuarioRegistroDTO dto)
         {
             var result = await _usuarioService.RegisterUsuarioAsync(dto);

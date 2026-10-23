@@ -145,6 +145,7 @@ namespace BusinessLogic.Services
             if (currentUserId.HasValue && 
                 currentUserId.Value != veedorId && 
                 !string.Equals(currentUserRol, RolUsuario.Organizador.ToString(), StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(currentUserRol, RolUsuario.Administrador.ToString(), StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(currentUserRol, "Admin", StringComparison.OrdinalIgnoreCase))
             {
                 throw new ForbiddenException("No tiene permisos para consultar el cronograma de otro veedor.");

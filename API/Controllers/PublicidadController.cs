@@ -1,12 +1,14 @@
 using System;
 using System.Threading.Tasks;
 using BusinessLogic.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers
 {
     [ApiController]
     [Route("api")]
+    [AllowAnonymous]
     public class PublicidadController : ControllerBase
     {
         private readonly IPublicidadService _publicidadService;
