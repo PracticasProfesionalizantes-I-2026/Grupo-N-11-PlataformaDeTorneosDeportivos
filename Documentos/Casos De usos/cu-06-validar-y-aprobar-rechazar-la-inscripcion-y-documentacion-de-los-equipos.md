@@ -34,7 +34,7 @@ Permite al Organizador auditar las solicitudes de inscripción de los equipos, a
    - Verifica que el torneo no haya alcanzado su cupo máximo de equipos confirmados, aplicando la regla de negocio **RN-06**.
    - En torneos configurados como "Pago", corrobora que conste el registro de validación del comprobante de pago, en cumplimiento estricto de la regla de negocio **RN-06**.
    - Asigna al equipo el estado definitivo "Inscrito y Confirmado".
-   - Actualiza el contador del torneo, reduciendo en uno la cantidad de plazas disponibles.
+   - Actualiza el contador del torneo, reduciendo en uno la cantidad de plazas disponibles; si se alcanza el cupo máximo (0 cupos restantes), transiciona automáticamente el estado del torneo a "Inscripciones Cerradas".
 4. La **Capa de Persistencia** actualiza transaccionalmente los registros en las tablas `Equipos` y `Torneos`.
 5. La **Capa de Negocio** despacha una notificación al Capitán informando la ratificación formal de su cupo en el certamen.
 6. El Sistema devuelve un código **200 OK** con los datos actualizados del equipo (ID, estado "Inscrito y Confirmado") y la disponibilidad remanente de cupos del torneo.
@@ -83,7 +83,7 @@ Permite al Organizador auditar las solicitudes de inscripción de los equipos, a
 2. La notificación de aprobación o rechazo puede remitirse de forma combinada por correo electrónico y mediante notificaciones push en la plataforma móvil.
 
 ### 6. POSTCONDICIONES
-- Si la solicitud es aprobada: el equipo adopta el estado "Inscrito y Confirmado", queda definitivamente incorporado a la nómina de habilitados para el fixture y se descuenta una plaza del cupo disponible del torneo.
+- Si la solicitud es aprobada: el equipo adopta el estado "Inscrito y Confirmado", queda definitivamente incorporado a la nómina de habilitados para el fixture y se descuenta una plaza del cupo disponible del torneo. Si con dicha confirmación se agotan las plazas disponibles, el torneo pasa automáticamente a estado "Inscripciones Cerradas".
 - Si la solicitud es rechazada: el cupo disponible del torneo no se altera, el equipo queda en estado "Rechazado / Observado" y se le restituyen los permisos de edición al Capitán sobre la lista de buena fe (**RN-03**) para rectificar la información objetada.
 
 ---
@@ -111,6 +111,7 @@ Permite al Organizador auditar las solicitudes de inscripción de los equipos, a
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
 | Flujo principal (Aprobación) | `200 OK` | `AprobarInscripcionAsync_WithValidData_ReturnsAprobadoDTOAndDecrementsCupo` | `AprobarInscripcion_WithValidTeam_Returns200Ok` |
+| Flujo principal (Último cupo confirmado) | `200 OK` | `AprobarInscripcionAsync_WhenLastSpotConfirmed_ClosesTournamentInscriptions` | `AprobarInscripcion_WhenLastSpotConfirmed_TransitionsTournamentToInscripcionesCerradas` |
 | 1a. Identificadores inválidos | `400 Bad Request` | — (validación de ruta / model binding) | `AprobarInscripcion_WithMalformedIds_Returns400BadRequest` |
 | 2a. Torneo o equipo inexistente | `404 Not Found` | `AprobarInscripcionAsync_WhenEntityDoesNotExist_ThrowsRecursoNotFoundException` | `AprobarInscripcion_WhenNotFound_Returns404NotFound` |
 | 3a. Estado no pendiente | `409 Conflict` | `AprobarInscripcionAsync_WhenTeamNotPending_ThrowsEstadoEquipoInvalidoException` | `AprobarInscripcion_WhenTeamAlreadyProcessed_Returns409Conflict` |

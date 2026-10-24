@@ -90,6 +90,62 @@ namespace BusinessLogic.Tests
         }
 
         [Fact]
+        public async Task AprobarInscripcionAsync_WhenLastSpotConfirmed_ClosesTournamentInscriptions()
+        {
+            // Arrange - Torneo con CupoMaximo = 2, ya hay 1 confirmado
+            var torneoId = Guid.NewGuid();
+            var equipoId = Guid.NewGuid();
+
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Dos Cupos",
+                CupoMaximo = 2,
+                EsPago = false,
+                CostoInscripcion = 0m,
+                Estado = EstadoTorneo.Abierto
+            };
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Segundo Equipo",
+                TorneoId = torneoId,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                PagoValidado = true
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetByIdAsync(torneoId))
+                .ReturnsAsync(torneo);
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId))
+                .ReturnsAsync(equipo);
+
+            _equipoRepositoryMock.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Equipo, bool>>>()))
+                .ReturnsAsync(new List<Equipo>
+                {
+                    new() { Id = Guid.NewGuid(), EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado }
+                });
+
+            _equipoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Equipo>()))
+                .Returns(Task.CompletedTask);
+
+            _torneoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Torneo>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _inscripcionService.AprobarInscripcionAsync(torneoId, equipoId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(0, result.CuposDisponibles);
+            Assert.Equal(EstadoTorneo.InscripcionesCerradas, torneo.Estado);
+
+            _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.Is<Torneo>(t =>
+                t.Id == torneoId && t.Estado == EstadoTorneo.InscripcionesCerradas)), Times.Once);
+        }
+
+        [Fact]
         public async Task AprobarInscripcionAsync_WhenEntityDoesNotExist_ThrowsRecursoNotFoundException()
         {
             // Arrange

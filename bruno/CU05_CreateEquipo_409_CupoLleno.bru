@@ -1,0 +1,38 @@
+meta {
+  name: CU-05 - Torneo con Cupo Lleno (409)
+  type: http
+  seq: 32
+}
+
+post {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "nombre": "Equipo Excedente Por Cupo",
+    "jugadores": [
+      { "nombre": "Jugador", "apellido": "Uno", "dni": "99887711" },
+      { "nombre": "Jugador", "apellido": "Dos", "dni": "99887712" },
+      { "nombre": "Jugador", "apellido": "Tres", "dni": "99887713" },
+      { "nombre": "Jugador", "apellido": "Cuatro", "dni": "99887714" },
+      { "nombre": "Jugador", "apellido": "Cinco", "dni": "99887715" }
+    ]
+  }
+}
+
+tests {
+  test("Status code is 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}

@@ -80,6 +80,11 @@ Permite a un Capitán registrar su equipo en la plataforma y cargar la lista de 
   2. El Sistema (Capa de Negocio) lanza `EquipoNombreDuplicadoException`.
   3. El Sistema devuelve un código **409 Conflict** con el mensaje: `"Ya existe un equipo con ese nombre en este torneo"`. Fin del caso de uso.
 
+* **3g. Torneo con cupo máximo alcanzado (HTTP 409 Conflict):**
+  1. Si en el Paso 3 el torneo ya posee la totalidad de sus plazas cubiertas por equipos confirmados.
+  2. El Sistema (Capa de Negocio) lanza `TorneoCupoLlenoException`.
+  3. El Sistema devuelve un código **409 Conflict** con el mensaje: `"No se puede registrar el equipo: el torneo ya ha alcanzado su cupo máximo de equipos."`. Fin del caso de uso.
+
 * **4a. Error de persistencia transaccional (HTTP 500 Internal Server Error):**
   1. Si en el Paso 4 la Capa de Persistencia falla al almacenar el equipo o la lista de jugadores.
   2. El Sistema realiza rollback de la transacción y registra el fallo técnico.
@@ -126,5 +131,6 @@ Permite a un Capitán registrar su equipo en la plataforma y cargar la lista de 
 | 3d. DNI duplicado en misma lista | `400 Bad Request` | `CreateEquipoAsync_WhenDuplicateDniInList_ThrowsValidationException` | `CreateEquipo_WhenDuplicateDniInList_Returns400BadRequest` |
 | 3e. Jugador ya inscripto en torneo (RN-02) | `409 Conflict` | `CreateEquipoAsync_WhenPlayerAlreadyInOtherTeam_ThrowsJugadorYaInscriptoException` | `CreateEquipo_WhenPlayerAlreadyRegisteredInTournament_Returns409Conflict` |
 | 3f. Nombre de equipo duplicado | `409 Conflict` | `CreateEquipoAsync_WhenTeamNameExistsInTournament_ThrowsEquipoNombreDuplicadoException` | `CreateEquipo_WhenDuplicateTeamName_Returns409Conflict` |
+| 3g. Torneo con cupo lleno | `409 Conflict` | `CreateEquipoAsync_WhenTournamentFull_ThrowsTorneoCupoLlenoException` | `CreateEquipo_WhenTournamentFull_Returns409Conflict` |
 
 > Regla de oro: cada flujo del caso de uso cuenta con al menos un test unitario o de integración HTTP. La suite de pruebas completa se ejecuta mediante `dotnet test`.

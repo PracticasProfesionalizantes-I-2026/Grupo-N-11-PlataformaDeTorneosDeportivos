@@ -20,6 +20,6 @@ El sistema gestiona Torneos, Equipos y Jugadores, aplicando reglas de negocio co
 ## Reglas de Negocio Implementadas
 - Torneos de Eliminación Directa tienen `CupoMaximo >= 4`.
 - Costo de inscripción siempre `> 0`.
-- Torneos tienen cupo limitado. Un equipo no puede pasar a `InscritoYConfirmado` si el torneo se llenó.
+- Torneos tienen cupo limitado. No se permite crear un nuevo equipo ni pasar a `InscritoYConfirmado` si el torneo ya completó su cupo máximo.
 - Un equipo requiere al menos un jugador para ser confirmado.
 - Un jugador no puede estar en dos equipos distintos dentro de un mismo torneo de manera simultánea.

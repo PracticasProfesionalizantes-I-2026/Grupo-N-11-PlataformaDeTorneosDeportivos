@@ -77,6 +77,17 @@ namespace BusinessLogic.Services
                 throw new TorneoInscripcionCerradaException("El torneo no se encuentra disponible para nuevas inscripciones");
             }
 
+            // 3g. RN-06: Verificar si el torneo ya alcanzó su cupo máximo de equipos confirmados
+            if (torneo.CupoMaximo > 0)
+            {
+                var equiposConfirmados = await _equipoRepository.FindAsync(e =>
+                    e.TorneoId == torneoId && e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado);
+                if (equiposConfirmados != null && equiposConfirmados.Count() >= torneo.CupoMaximo)
+                {
+                    throw new TorneoCupoLlenoException("No se puede registrar el equipo: el torneo ya ha alcanzado su cupo máximo de equipos.");
+                }
+            }
+
             // 3f. Verificar duplicidad de nombre en el mismo torneo
             var existeNombre = await _equipoRepository.ExistsNombreInTorneoAsync(torneoId, nombreNormalizado);
             if (existeNombre)
@@ -164,6 +175,20 @@ namespace BusinessLogic.Services
 
             equipo.EstadoInscripcion = nuevoEstado;
             await _equipoRepository.UpdateAsync(equipo);
+
+            if (nuevoEstado == EstadoInscripcion.InscritoYConfirmado)
+            {
+                var torneo = await _torneoRepository.GetByIdAsync(equipo.TorneoId);
+                if (torneo != null && torneo.Estado == EstadoTorneo.Abierto)
+                {
+                    var confirmados = await _equipoRepository.FindAsync(e => e.TorneoId == equipo.TorneoId && e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado);
+                    if (confirmados != null && confirmados.Count() >= torneo.CupoMaximo)
+                    {
+                        torneo.Estado = EstadoTorneo.InscripcionesCerradas;
+                        await _torneoRepository.UpdateAsync(torneo);
+                    }
+                }
+            }
 
             return MapToResponseDTO(equipo);
         }

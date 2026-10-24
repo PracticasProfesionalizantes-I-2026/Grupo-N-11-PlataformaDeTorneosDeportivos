@@ -199,11 +199,11 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
   - Entidades: [Equipo.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Entities/Equipo.cs), [Jugador.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Entities/Jugador.cs).
 - **Contratos (Shared):**
   - DTOs: `EquipoCreateDTO`, `JugadorCreateDTO`, `EquipoResponseDTO`.
-  - Excepciones: `JugadorYaInscriptoException` (409), `TorneoInscripcionCerradaException` (409), `EquipoNombreDuplicadoException` (409), `MinimoJugadoresInsuficienteException` (422).
+  - Excepciones: `JugadorYaInscriptoException` (409), `TorneoInscripcionCerradaException` (409), `EquipoNombreDuplicadoException` (409), `TorneoCupoLlenoException` (409), `MinimoJugadoresInsuficienteException` (422).
 - **Pruebas Automatizadas:**
   - Unitarias: `EquipoServiceTests.cs`.
   - Integración: `EquiposIntegrationTests.cs`.
-  - Archivos Bruno: `CU05_CreateEquipo_400_DniDuplicado.bru`, `CU05_CreateEquipo_409_JugadorYaInscripto.bru`, `CU05_CreateEquipo_409_TorneoCerrado.bru`, `CU05_CreateEquipo_422_MinimoJugadores.bru`, `CreateEquipo.bru`.
+  - Archivos Bruno: `CU05_CreateEquipo_400_DniDuplicado.bru`, `CU05_CreateEquipo_409_CupoLleno.bru`, `CU05_CreateEquipo_409_JugadorYaInscripto.bru`, `CU05_CreateEquipo_409_TorneoCerrado.bru`, `CU05_CreateEquipo_422_MinimoJugadores.bru`, `CreateEquipo.bru`.
 
 ---
 

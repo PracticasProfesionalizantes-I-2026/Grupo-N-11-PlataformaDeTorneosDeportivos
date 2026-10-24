@@ -35,10 +35,10 @@ namespace BusinessLogic.Services
                 throw new NotFoundException($"No se encontró el torneo con ID {torneoId}");
             }
 
-            // Validar estado del torneo: debe estar Abierto y sin fixture previo (Flujo 3b)
-            if (torneo.Estado != EstadoTorneo.Abierto)
+            // Validar estado del torneo: debe estar Abierto o Inscripciones Cerradas y sin fixture previo (Flujo 3b)
+            if (torneo.Estado != EstadoTorneo.Abierto && torneo.Estado != EstadoTorneo.InscripcionesCerradas)
             {
-                throw new TorneoEstadoInvalidoException("El torneo debe encontrarse en estado Abierto para generar el fixture.");
+                throw new TorneoEstadoInvalidoException("El torneo debe encontrarse en estado Abierto o Inscripciones Cerradas para generar el fixture.");
             }
 
             if (torneo.Partidos != null && torneo.Partidos.Count > 0)

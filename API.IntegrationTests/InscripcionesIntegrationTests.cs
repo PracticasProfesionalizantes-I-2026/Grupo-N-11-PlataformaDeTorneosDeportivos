@@ -88,6 +88,35 @@ namespace API.IntegrationTests
         }
 
         [Fact]
+        public async Task AprobarInscripcion_WhenLastSpotConfirmed_TransitionsTournamentToInscripcionesCerradas()
+        {
+            // Arrange - Torneo con CupoMaximo = 1 y 1 equipo pendiente
+            var (torneo, equipo) = await CreateTestTorneoAndEquipoAsync(
+                $"Torneo Cierre Cupo {Guid.NewGuid():N}",
+                cupoMaximo: 1,
+                esPago: false,
+                costo: 0m);
+
+            // Act
+            var response = await _client.PatchAsync(
+                $"/api/torneos/{torneo.Id}/equipos/{equipo.Id}/aprobar",
+                null);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var result = await response.Content.ReadFromJsonAsync<AprobarInscripcionResponseDTO>();
+            Assert.NotNull(result);
+            Assert.Equal(0, result.CuposDisponibles);
+
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var torneoDb = await db.Torneos.FindAsync(torneo.Id);
+            Assert.NotNull(torneoDb);
+            Assert.Equal(EstadoTorneo.InscripcionesCerradas, torneoDb.Estado);
+        }
+
+        [Fact]
         public async Task AprobarInscripcion_WithMalformedIds_Returns400BadRequest()
         {
             // Arrange - IDs malformados (no son GUIDs)

@@ -328,6 +328,55 @@ namespace BusinessLogic.Tests
         }
 
         [Fact]
+        public async Task CreateEquipoAsync_WhenTournamentFull_ThrowsTorneoCupoLlenoException()
+        {
+            // Arrange - RN-06: Torneo con cupo máximo alcanzado
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Cupo Lleno",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 2,
+                Estado = EstadoTorneo.Abierto
+            };
+
+            var dto = new EquipoCreateDTO
+            {
+                Nombre = "Equipo Rechazado Por Cupo",
+                TorneoId = torneoId,
+                Jugadores = new List<JugadorCreateDTO>
+                {
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = "11111111" },
+                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = "22222222" },
+                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = "33333333" },
+                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = "44444444" },
+                    new() { Nombre = "Diego", Apellido = "Romero", Dni = "55555555" }
+                }
+            };
+
+            var equiposConfirmados = new List<Equipo>
+            {
+                new Equipo { Id = Guid.NewGuid(), EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado },
+                new Equipo { Id = Guid.NewGuid(), EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetByIdAsync(torneoId))
+                .ReturnsAsync(torneo);
+
+            _equipoRepositoryMock.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Equipo, bool>>>()))
+                .ReturnsAsync(equiposConfirmados);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<TorneoCupoLlenoException>(() =>
+                _equipoService.CreateEquipoAsync(torneoId, dto));
+
+            Assert.Contains("cupo máximo", ex.Message);
+            _equipoRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Equipo>()), Times.Never);
+        }
+
+        [Fact]
         public async Task CambiarEstadoAsync_TorneoLleno_ThrowsBusinessRuleConflictException()
         {
             // Arrange

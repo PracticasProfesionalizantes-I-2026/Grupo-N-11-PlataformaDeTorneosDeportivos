@@ -67,6 +67,12 @@ namespace BusinessLogic.Services
             await _equipoRepository.UpdateAsync(equipo);
 
             var cuposRestantes = Math.Max(0, torneo.CupoMaximo - (cantidadConfirmados + 1));
+            if (cuposRestantes == 0 && torneo.Estado == EstadoTorneo.Abierto)
+            {
+                torneo.Estado = EstadoTorneo.InscripcionesCerradas;
+                await _torneoRepository.UpdateAsync(torneo);
+            }
+
             return MapToAprobarResponseDTO(equipo, torneo.Id, cuposRestantes);
         }
 

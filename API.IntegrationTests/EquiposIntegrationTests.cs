@@ -299,6 +299,47 @@ namespace API.IntegrationTests
         }
 
         [Fact]
+        public async Task CreateEquipo_WhenTournamentFull_Returns409Conflict()
+        {
+            // Arrange - Torneo con CupoMaximo = 1 y ya hay 1 equipo confirmado
+            var torneo = await CreateTestTorneoAsync($"Torneo Cupo Lleno {Guid.NewGuid():N}", Disciplina.Futbol);
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var t = await db.Torneos.FindAsync(torneo.Id);
+                t!.CupoMaximo = 1;
+                db.Equipos.Add(new Equipo
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = $"Equipo Confirmado {Guid.NewGuid():N}",
+                    TorneoId = torneo.Id,
+                    EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var dto = new EquipoCreateDTO
+            {
+                Nombre = $"Equipo Excedente {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                Jugadores = new List<JugadorCreateDTO>
+                {
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
+                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
+                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
+                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
+                    new() { Nombre = "Diego", Apellido = "Romero", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) }
+                }
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync($"/api/torneos/{torneo.Id}/equipos", dto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        }
+
+        [Fact]
         public async Task GetEstadisticasEquipo_Returns200OK()
         {
             // Arrange
