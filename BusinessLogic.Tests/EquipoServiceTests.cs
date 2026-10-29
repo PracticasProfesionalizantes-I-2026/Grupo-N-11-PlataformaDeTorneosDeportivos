@@ -538,5 +538,44 @@ namespace BusinessLogic.Tests
             await Assert.ThrowsAsync<NotFoundException>(() => 
                 _equipoService.GetEstadisticasAsync(equipoId));
         }
+
+        [Fact]
+        public async Task CreateEquipoAsync_WhenPlayerDniContainsLetters_ThrowsValidationException()
+        {
+            // Arrange
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Prueba",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 10,
+                Estado = EstadoTorneo.Abierto
+            };
+
+            var dto = new EquipoCreateDTO
+            {
+                Nombre = "Los Galacticos",
+                TorneoId = torneoId,
+                Jugadores = new List<JugadorCreateDTO>
+                {
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = "1111111A" },
+                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = "22222222" },
+                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = "33333333" },
+                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = "44444444" },
+                    new() { Nombre = "Diego", Apellido = "Romero", Dni = "55555555" }
+                }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetByIdAsync(torneoId))
+                .ReturnsAsync(torneo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ValidationException>(() =>
+                _equipoService.CreateEquipoAsync(torneoId, dto));
+
+            Assert.Equal("El DNI debe contener solo números.", ex.Message);
+        }
     }
 }

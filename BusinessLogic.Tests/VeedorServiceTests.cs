@@ -313,5 +313,24 @@ namespace BusinessLogic.Tests
 
             Assert.Equal($"No se encontró el veedor con ID {veedorId}", ex.Message);
         }
+
+        [Fact]
+        public async Task CreateVeedorAsync_WhenDniContainsLetters_ThrowsValidationException()
+        {
+            // Arrange
+            var dto = new VeedorCreateDTO
+            {
+                Nombre = "Roberto",
+                Apellido = "Gomez",
+                Dni = "3344455A",
+                Email = "veedor.invalido@torneos.com"
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ValidationException>(() =>
+                _veedorService.CreateVeedorAsync(dto));
+
+            Assert.Equal("El DNI debe contener solo números.", ex.Message);
+        }
     }
 }

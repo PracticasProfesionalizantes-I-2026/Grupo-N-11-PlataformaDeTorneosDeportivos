@@ -88,5 +88,26 @@ namespace API.IntegrationTests
             // Assert
             Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
         }
+
+        [Fact]
+        public async Task RegisterUsuario_WithLettersInDni_Returns400BadRequest()
+        {
+            // Arrange
+            var dto = new UsuarioRegistroDTO
+            {
+                Nombre = "Test",
+                Apellido = "Invalido",
+                Dni = "1234567A",
+                Email = "test.dniinvalido@torneos.com",
+                Password = "Password123!",
+                Rol = RolUsuario.Capitan
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/usuarios/registro", dto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
     }
 }

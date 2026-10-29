@@ -150,5 +150,33 @@ namespace BusinessLogic.Tests
             Assert.Equal("El correo o DNI ya se encuentra registrado en la plataforma.", ex.Message);
             _usuarioRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Usuario>()), Times.Never);
         }
+
+        [Theory]
+        [InlineData("1234567A")]
+        [InlineData("ABCDEFGH")]
+        [InlineData("40123-456")]
+        [InlineData("40 123 456")]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task RegisterUsuarioAsync_WhenDniContainsLettersOrInvalidCharacters_ThrowsValidationException(string invalidDni)
+        {
+            // Arrange
+            var dto = new UsuarioRegistroDTO
+            {
+                Nombre = "Lucas",
+                Apellido = "Fernandez",
+                Dni = invalidDni,
+                Email = "lucas.fernandez@example.com",
+                Password = "Password123!",
+                Rol = RolUsuario.Capitan
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ValidationException>(() =>
+                _usuarioService.RegisterUsuarioAsync(dto));
+
+            Assert.Equal("El DNI debe contener solo números.", ex.Message);
+            _usuarioRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Usuario>()), Times.Never);
+        }
     }
 }

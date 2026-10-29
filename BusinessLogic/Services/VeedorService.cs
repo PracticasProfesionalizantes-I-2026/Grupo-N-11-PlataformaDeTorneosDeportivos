@@ -35,7 +35,12 @@ namespace BusinessLogic.Services
             }
 
             var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
-            var normalizedDni = dto.Dni.Trim();
+            var normalizedDni = dto.Dni?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(normalizedDni) || !normalizedDni.All(c => c >= '0' && c <= '9'))
+            {
+                throw new ValidationException("El DNI debe contener solo números.");
+            }
 
             // 3a. Verificar conflicto de DNI o Email existente en la plataforma
             var usuarioPorEmail = await _usuarioRepository.GetByEmailAsync(normalizedEmail);

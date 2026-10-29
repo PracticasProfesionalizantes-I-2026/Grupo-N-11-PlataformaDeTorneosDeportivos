@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using BusinessLogic.Security;
 using DataAccess.Entities;
@@ -23,8 +24,18 @@ namespace BusinessLogic.Services
 
         public async Task<UsuarioResponseDTO> RegisterUsuarioAsync(UsuarioRegistroDTO dto)
         {
+            if (dto == null)
+            {
+                throw new ValidationException("Los datos de registro son obligatorios.");
+            }
+
             var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
-            var normalizedDni = dto.Dni.Trim();
+            var normalizedDni = dto.Dni?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(normalizedDni) || !normalizedDni.All(c => c >= '0' && c <= '9'))
+            {
+                throw new ValidationException("El DNI debe contener solo números.");
+            }
 
             // RN-10: Verificar que ni el email ni el DNI se encuentren duplicados en la base de datos
             var usuarioPorEmail = await _usuarioRepository.GetByEmailAsync(normalizedEmail);

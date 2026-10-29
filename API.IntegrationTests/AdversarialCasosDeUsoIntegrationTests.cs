@@ -81,6 +81,24 @@ namespace API.IntegrationTests
             Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
         }
 
+        [Fact]
+        public async Task CU01_Registro_DniConLetras_Retorna400BadRequest()
+        {
+            var dto = new UsuarioRegistroDTO
+            {
+                Nombre = "Juan",
+                Apellido = "Perez",
+                Dni = "3311122A",
+                Email = "juan.dniinvalido@test.com",
+                Password = "Password123!",
+                Rol = RolUsuario.Capitan
+            };
+
+            var res = await _client.PostAsJsonAsync("/api/usuarios/registro", dto);
+
+            Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        }
+
         #endregion
 
         #region CU-02: Iniciar sesión (Pruebas con datos erróneos)

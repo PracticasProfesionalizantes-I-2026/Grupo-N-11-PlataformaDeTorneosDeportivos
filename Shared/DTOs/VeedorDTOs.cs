@@ -13,6 +13,7 @@ namespace Shared.DTOs
         public string Apellido { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El DNI es obligatorio.")]
+        [RegularExpression(@"^[0-9]+$", ErrorMessage = "El DNI debe contener solo números.")]
         public string Dni { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El correo electrónico es obligatorio.")]

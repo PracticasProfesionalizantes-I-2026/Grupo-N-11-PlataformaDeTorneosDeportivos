@@ -198,5 +198,29 @@ namespace BusinessLogic.Tests
             Assert.Contains("Copa Verano", result.HistorialTorneos);
             Assert.Contains("Liga Invierno", result.HistorialTorneos);
         }
+
+        [Theory]
+        [InlineData("1234567A")]
+        [InlineData("ABCDEFGH")]
+        [InlineData("33444-555")]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task CreateAsync_WhenDniContainsLettersOrInvalidCharacters_ThrowsValidationException(string invalidDni)
+        {
+            // Arrange
+            var dto = new JugadorCreateDTO
+            {
+                Nombre = "Lionel",
+                Apellido = "Messi",
+                Dni = invalidDni,
+                EquipoId = Guid.NewGuid()
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ValidationException>(() =>
+                _jugadorService.CreateAsync(dto));
+
+            Assert.Equal("El DNI debe contener solo números.", ex.Message);
+        }
     }
 }

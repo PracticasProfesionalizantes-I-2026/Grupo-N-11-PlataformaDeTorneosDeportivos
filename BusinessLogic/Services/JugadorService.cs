@@ -37,6 +37,15 @@ namespace BusinessLogic.Services
 
         public async Task<JugadorResponseDTO> CreateAsync(JugadorCreateDTO dto)
         {
+            if (dto == null)
+                throw new ValidationException("Los datos del jugador son obligatorios.");
+
+            var normalizedDni = dto.Dni?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedDni) || !normalizedDni.All(c => c >= '0' && c <= '9'))
+            {
+                throw new ValidationException("El DNI debe contener solo números.");
+            }
+
             var equipoDestino = await _equipoRepository.GetByIdAsync(dto.EquipoId);
             if (equipoDestino == null)
                 throw new NotFoundException($"No se encontró el equipo con ID {dto.EquipoId}");

@@ -102,7 +102,16 @@ namespace BusinessLogic.Services
                 throw new MinimoJugadoresInsuficienteException("La lista debe contener al menos el número mínimo de jugadores requeridos para la disciplina");
             }
 
-            // 3d. Validar duplicidad interna de DNI en la nómina enviada
+            // 3d. Validar duplicidad interna de DNI en la nómina enviada y formato numérico
+            foreach (var jugador in dto.Jugadores)
+            {
+                var dniTrim = jugador.Dni?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(dniTrim) || !dniTrim.All(c => c >= '0' && c <= '9'))
+                {
+                    throw new ValidationException("El DNI debe contener solo números.");
+                }
+            }
+
             var dnisEnviados = dto.Jugadores.Select(j => j.Dni?.Trim() ?? string.Empty).ToList();
             if (dnisEnviados.Distinct(StringComparer.OrdinalIgnoreCase).Count() < dnisEnviados.Count)
             {
