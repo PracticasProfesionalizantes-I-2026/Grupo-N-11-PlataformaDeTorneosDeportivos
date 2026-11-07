@@ -20,25 +20,29 @@ Permite al Organizador dar de alta, modificar permisos o dar de baja cuentas par
 - El Organizador debe estar autenticado en la plataforma.
 - El sistema de roles y envío de correos debe estar operativo.
 
-### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 201)
-1. El Actor envía una petición al endpoint `POST /api/veedores` con los datos del nuevo veedor (Nombre, Apellido, DNI, Email y Torneos/Sedes asignadas).
-2. La **Capa de Presentación** valida que el formato de los datos en el esquema enviado sea correcto y los campos requeridos estén completos.
-3. La **Capa de Negocio** verifica que el DNI o Email no pertenezcan ya a un usuario registrado y genera una contraseña inicial automática.
-4. La **Capa de Persistencia** registra al usuario en la base de datos asignándole el rol de "Veedor" y vinculando sus torneos/sedes.
+### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 201 Created)
+1. El Actor envía una petición al endpoint `POST /api/veedores` con los datos del nuevo veedor (`Nombre`, `Apellido`, `Dni`, `Email`, `Telefono`, y lista de `TorneoIds`).
+2. La **Capa de Presentación** (`VeedoresController.CreateVeedor`) valida que el formato de los datos en `VeedorCreateDTO` sea correcto:
+   - `Dni`: exactamente 7 u 8 dígitos numéricos (`^\d{7,8}$`).
+   - `Telefono`: numérico con prefijo `+` opcional, de 8 a 15 dígitos (`^\+?[0-9]{8,15}$`).
+   - `Nombre` y `Apellido`: entre 2 y 50 caracteres alfabéticos (sin números ni caracteres especiales).
+   - `Email`: formato de correo válido.
+3. La **Capa de Negocio** (`VeedorService.CreateVeedorAsync`) normaliza los textos (`Trim()`), verifica que el DNI o Email no pertenezcan ya a un usuario registrado (regla **RN-10**) y genera una contraseña inicial automática.
+4. La **Capa de Persistencia** registra al usuario en la base de datos asignándole el rol `RolUsuario.Veedor` y vinculando sus torneos/sedes.
 5. El Sistema envía un correo electrónico automático al nuevo veedor con sus credenciales de acceso.
-6. El Sistema devuelve un código **201 Created** indicando el alta exitosa del veedor en el sistema.
+6. El Sistema devuelve un código **201 Created** con el payload `VeedorResponseDTO` indicando el alta exitosa del veedor en el sistema.
 
 ### 4. FLUJOS ALTERNATIVOS (Caminos Tristes / Excepciones)
 
 * **2a. Datos incompletos o malformados (HTTP 400 Bad Request):**
-  1. Si en el Paso 2 faltan campos obligatorios o el email posee un formato incorrecto.
-  2. La **Capa de Presentación** rechaza la petición.
-  3. El Sistema devuelve un código **400 Bad Request** detallando el error. Fin del caso de uso.
+  1. Si en el Paso 2 faltan campos obligatorios, el DNI contiene letras o longitud distinta de 7-8 dígitos, el teléfono contiene letras, o el nombre posee números.
+  2. La **Capa de Presentación** o la **Capa de Negocio** rechaza la petición lanzando `ValidationException`.
+  3. El Sistema devuelve un código **400 Bad Request** con el formato unificado `{ "error": "mensaje descriptivo" }`. Fin del caso de uso.
 
 * **3a. Veedor ya existente (HTTP 409 Conflict):**
-  1. Si en el Paso 3 el Sistema detecta que el DNI o Email ya se encuentran registrados para otro usuario.
-  2. La **Capa de Negocio** lanza una excepción de dominio por conflicto de unicidad.
-  3. El Sistema devuelve un código **409 Conflict** indicando: "El DNI o Email ya están registrados en el sistema". Fin del caso de uso.
+  1. Si en el Paso 3 el Sistema detecta que el DNI o Email ya se encuentran registrados para otro usuario (violando **RN-10**).
+  2. La **Capa de Negocio** lanza `BusinessRuleConflictException`.
+  3. El Sistema devuelve un código **409 Conflict** indicando: `"El correo electrónico o DNI ya se encuentra registrado"`. Fin del caso de uso.
 
 ### 5. SUB-VARIACIONES
 * **1a. Modificación o Desvinculación de Veedor:**
@@ -68,7 +72,8 @@ Permite al Organizador dar de alta, modificar permisos o dar de baja cuentas par
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
 | Flujo principal | `201 Created` | `CreateVeedorAsync_WithValidData_ReturnsCreated` | `CreateVeedor_WithValidData_Returns201Created` |
-| 2a. Datos incompletos | `400 Bad Request` | — (validación DTO) | `CreateVeedor_WithMissingData_Returns400BadRequest` |
-| 3a. DNI/Email existente | `409 Conflict` | `CreateVeedorAsync_WithExistingDni_ThrowsConflictException` | `CreateVeedor_WhenDuplicateData_Returns409Conflict` |
+| 2a. Datos incompletos | `400 Bad Request` | — (validación DTO DataAnnotations) | `CreateVeedor_WithMissingData_Returns400BadRequest` |
+| 2a. DNI con formato inválido | `400 Bad Request` | `CreateVeedorAsync_WhenDniContainsLetters_ThrowsValidationException` | `RegisterUsuario_WithLettersInDni_Returns400BadRequest`<br>`Vector2_AtaquesAlDni_Retorna400BadRequest` |
+| 3a. DNI/Email existente (RN-10) | `409 Conflict` | `CreateVeedorAsync_WithExistingDni_ThrowsConflictException` | `CreateVeedor_WhenDuplicateData_Returns409Conflict` |
 | Sub-variación (Modificar) | `200 OK` | `UpdateVeedorAsync_WithValidData_UpdatesVeedor` | `UpdateVeedor_Returns200OK` |
 | Sub-variación (Desactivar) | `204 No Content` | `DeactivateVeedorAsync_UpdatesStatus` | `DeactivateVeedor_Returns204NoContent` |

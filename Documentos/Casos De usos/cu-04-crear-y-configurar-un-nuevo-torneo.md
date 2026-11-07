@@ -25,30 +25,46 @@ Permite al Organizador del sistema dar de alta una nueva competencia deportiva c
 - El sistema debe encontrarse operativo y con la Capa de Persistencia accesible.
 
 ### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 201 Created)
-1. El Actor envía una petición al endpoint `POST /api/torneos` con un JSON que contiene los datos de la competencia (`nombre`, `disciplinaId`, `modalidad`, `cupoMaximo`, `esPago`, `costoInscripcion`).
-2. La **Capa de Presentación** (`TorneosController.CreateTorneo`) valida que el JSON sea sintácticamente correcto y que los campos obligatorios estén presentes y cumplan las restricciones de formato (data annotations `[Required]`, `[StringLength]` sobre `TorneoCreateDTO`).
-3. La **Capa de Negocio** (`TorneoService.CreateTorneoAsync`) normaliza los campos de texto (`Trim()`), verifica que la disciplina referenciada exista y comprueba que no exista otro torneo registrado con el mismo nombre.
+1. El Actor envía una petición al endpoint `POST /api/torneos` con un JSON que contiene los datos de la competencia (`nombre`, `disciplinaId`/`disciplina`, `modalidad`, `cupoMaximo`, `esPago`, `costoInscripcion`).
+2. La **Capa de Presentación** (`TorneosController.CreateTorneo`) valida que el JSON sea sintácticamente correcto, que los campos requeridos estén presentes y cumplan las restricciones de formato (data annotations `[Required]`, `[StringLength(100, MinimumLength = 3)]`, `[Range]` sobre `TorneoCreateDTO`):
+   - `Nombre`: no vacío, entre 3 y 100 caracteres.
+   - `Disciplina` / `DisciplinaId`: valor válido dentro del catálogo de disciplinas.
+   - `Modalidad`: valor definido dentro del enum `Modalidad` (`Enum.IsDefined`).
+   - `CupoMaximo`: valor entero positivo (entre 2 y 128).
+   - `EsPago` y `CostoInscripcion`: coherencia económica estricta.
+3. La **Capa de Negocio** (`TorneoService.CreateTorneoAsync`):
+   - Normaliza los campos de texto (`Trim()`).
+   - Verifica que la disciplina referenciada exista (`Enum.IsDefined(typeof(Disciplina), dto.Disciplina)`); si no existe, lanza `DisciplinaNotFoundException` (404) o `ValidationException` (400).
+   - Verifica que la modalidad sea válida (`Enum.IsDefined(typeof(Modalidad), dto.Modalidad)`); si no existe, lanza `ValidationException` (400).
+   - Comprueba que no exista otro torneo registrado con el mismo nombre (insensible a mayúsculas/minúsculas).
 4. La **Capa de Negocio** valida que si la modalidad es "Eliminación Directa" (Brackets), el cupo máximo de equipos sea estrictamente una potencia de 2 y mayor o igual a 4, aplicando la regla de negocio **RN-04**.
-5. La **Capa de Negocio** valida que si el torneo es configurado como "Pago" (`esPago == true`), el monto sea estrictamente mayor a cero y que la cuenta recaudadora de la organización se encuentre vinculada y activa, aplicando la regla de negocio **RN-05**.
+5. La **Capa de Negocio** valida la política económica:
+   - Si `esPago == false`: el costo de inscripción debe ser obligatoriamente 0 (`costoInscripcion == 0`). Si se envía un valor distinto de cero, lanza `CostoInvalidoException` (400 Bad Request).
+   - Si `esPago == true`: el monto debe ser estrictamente mayor a cero y menor o igual a 100.000.000 (`CostoInvalidoException` -> 400 Bad Request si `<= 0`), y la cuenta recaudadora de la organización debe encontrarse vinculada y activa, aplicando la regla de negocio **RN-05** (`CuentaRecaudadoraInactivaException` -> 422 Unprocessable Entity).
 6. La **Capa de Persistencia** genera un nuevo identificador único (GUID/ID) y almacena el registro en la tabla `Torneos` con estado "Abierto para Inscripción".
-7. El Sistema devuelve un código **201 Created** con la cabecera `Location` y el payload resultante (ID, nombre, disciplina, modalidad, cupo, costo y estado).
+7. El Sistema devuelve un código **201 Created** con la cabecera `Location` y el payload resultante `TorneoResponseDTO` (ID, nombre, disciplina, modalidad, cupo, costo y estado).
 
 ### 4. FLUJOS ALTERNATIVOS (Caminos Tristes / Excepciones)
 
 * **1a. JSON inválido o malformado (HTTP 400 Bad Request):**
   1. Si en el Paso 1 el cuerpo de la petición no es un JSON válido (sintaxis corrupta, cuerpo vacío o tipos de datos incompatibles).
   2. El Sistema (Capa de Presentación / model binding) rechaza la petición por error de esquema.
-  3. El Sistema devuelve un código **400 Bad Request**. Fin del caso de uso.
+  3. El Sistema devuelve un código **400 Bad Request** con el formato `{ "error": "mensaje descriptivo" }`. Fin del caso de uso.
 
 * **2a. Campo obligatorio faltante o vacío (HTTP 400 Bad Request):**
-  1. Si en el Paso 2 el JSON no incluye `nombre`, `disciplinaId`, `modalidad` o `cupoMaximo`.
+  1. Si en el Paso 2 el JSON no incluye `nombre`, `disciplina`, `modalidad` o `cupoMaximo`.
   2. El Sistema (Capa de Presentación) rechaza la petición por validación de modelo (`ModelState.IsValid == false`).
   3. El Sistema devuelve un código **400 Bad Request** detallando el campo faltante. Fin del caso de uso.
 
-* **2b. Disciplina inexistente (HTTP 404 Not Found):**
-  1. Si en el Paso 3 la `disciplinaId` proporcionada no existe en la base de datos o se encuentra inactiva.
-  2. El Sistema (Capa de Negocio) no encuentra la entidad correspondiente y lanza `DisciplinaNotFoundException`.
-  3. El Sistema devuelve un código **404 Not Found** con el mensaje: `"La disciplina especificada no existe"`. Fin del caso de uso.
+* **2b. Disciplina inexistente o fuera de rango (HTTP 404 Not Found / 400 Bad Request):**
+  1. Si en el Paso 3 la `disciplinaId`/`disciplina` no existe en la base de datos o se envía un entero no definido (ej. 99, -1).
+  2. El Sistema (Capa de Negocio) detecta la disciplina inexistente y lanza `DisciplinaNotFoundException` o `ValidationException`.
+  3. El Sistema devuelve un código **404 Not Found** o **400 Bad Request** con el mensaje explicativo. Fin del caso de uso.
+
+* **2c. Modalidad fuera de rango (HTTP 400 Bad Request):**
+  1. Si en el Paso 3 se envía un valor entero que no corresponde a ningún miembro del enum `Modalidad` (ej. 16, -1).
+  2. El Sistema (Capa de Negocio) lanza `ValidationException`.
+  3. El Sistema devuelve un código **400 Bad Request** indicando que la modalidad es inválida. Fin del caso de uso.
 
 * **3a. Nombre de torneo duplicado (HTTP 409 Conflict):**
   1. Si en el Paso 3 se detecta que ya existe otro torneo con el mismo nombre registrado en el sistema.
@@ -60,12 +76,17 @@ Permite al Organizador del sistema dar de alta una nueva competencia deportiva c
   2. El Sistema (Capa de Negocio) lanza `CupoInvalidoEliminacionException`.
   3. El Sistema devuelve un código **422 Unprocessable Entity** con el mensaje: `"Para torneos de eliminación directa el cupo debe ser potencia de 2 y mínimo 4 (RN-04)"`. Fin del caso de uso.
 
-* **5a. Monto de inscripción inválido en torneo pago (HTTP 400 Bad Request):**
+* **5a. Inconsistencia entre Gratuidad y Costo (HTTP 400 Bad Request):**
+  1. Si en el Paso 5 el torneo es gratuito (`esPago == false`) pero se ingresa un `costoInscripcion` distinto de 0 (ej. 1000).
+  2. El Sistema (Capa de Negocio) lanza `CostoInvalidoException`.
+  3. El Sistema devuelve un código **400 Bad Request** con el mensaje: `"No se puede ingresar un costo de inscripción si el torneo es gratuito (EsPago = false)"`. Fin del caso de uso.
+
+* **5b. Monto de inscripción inválido en torneo pago (HTTP 400 Bad Request):**
   1. Si en el Paso 5 el torneo está marcado como pago (`esPago == true`) pero el `costoInscripcion` es menor o igual a cero.
   2. El Sistema (Capa de Negocio) lanza `CostoInvalidoException`.
   3. El Sistema devuelve un código **400 Bad Request** con el mensaje: `"El costo debe ser mayor a cero para torneos pagos"`. Fin del caso de uso.
 
-* **5b. Cuenta recaudadora no vinculada o inactiva (HTTP 422 Unprocessable Entity):**
+* **5c. Cuenta recaudadora no vinculada o inactiva (HTTP 422 Unprocessable Entity):**
   1. Si en el Paso 5 el torneo es de pago pero la cuenta recaudadora de la organización no se encuentra activa en el sistema, violando la regla **RN-05**.
   2. El Sistema (Capa de Negocio) interrumpe la publicación y lanza `CuentaRecaudadoraInactivaException`.
   3. El Sistema devuelve un código **422 Unprocessable Entity** con el mensaje: `"No se puede publicar un torneo pago sin una cuenta recaudadora activa (RN-05)"`. Fin del caso de uso.
@@ -108,12 +129,14 @@ Permite al Organizador del sistema dar de alta una nueva competencia deportiva c
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
 | Flujo principal | `201 Created` | `CreateTorneoAsync_WithValidData_ReturnsCreatedTorneoDTO` | `CreateTorneo_WithValidPayload_Returns201Created` |
-| 1a. JSON inválido | `400 Bad Request` | — (model binding de ASP.NET Core) | `CreateTorneo_WithMalformedJson_Returns400BadRequest` |
+| 1a. JSON inválido | `400 Bad Request` | — (model binding de ASP.NET Core) | `CreateTorneo_WithMalformedJson_Returns400BadRequest`<br>`Fuzzing_JsonRotoOTiposIncompatibles_Retorna400ConFormatoErrorUnificado` |
 | 2a. Campo obligatorio faltante | `400 Bad Request` | — (detectado por `[Required]` en Presentación) | `CreateTorneo_WithMissingRequiredFields_Returns400BadRequest` |
-| 2b. Disciplina inexistente | `404 Not Found` | `CreateTorneoAsync_WhenDisciplinaDoesNotExist_ThrowsDisciplinaNotFoundException` | `CreateTorneo_WhenDisciplinaNotFound_Returns404NotFound` |
+| 2b. Disciplina inexistente o fuera de rango | `404 Not Found` / `400 Bad Request` | `CreateTorneoAsync_WhenDisciplinaDoesNotExist_ThrowsDisciplinaNotFoundException`<br>`CasoB_TorneoService_DisciplinaOModalidadInvalida_LanzaExcepcion` | `CreateTorneo_WhenDisciplinaNotFound_Returns404NotFound`<br>`CasoB_Integration_CrearTorneo_Disciplina99YModalidad16_FallaCon400O404` |
+| 2c. Modalidad fuera de rango | `400 Bad Request` | `CasoB_TorneoService_DisciplinaOModalidadInvalida_LanzaExcepcion` | `CasoB_Integration_CrearTorneo_Disciplina99YModalidad16_FallaCon400O404`<br>`Vector1_EnumsFueraDeRango_Retorna4xxNunca500` |
 | 3a. Nombre de torneo duplicado | `409 Conflict` | `CreateTorneoAsync_WhenNameAlreadyExists_ThrowsTorneoNombreDuplicadoException` | `CreateTorneo_WhenDuplicateName_Returns409Conflict` |
-| 4a. Cupo no potencia de 2 (RN-04) | `422 Unprocessable Entity` | `CreateTorneoAsync_WhenEliminacionDirectaAndCupoNotPowerOfTwo_ThrowsCupoInvalidoEliminacionException` | `CreateTorneo_WhenEliminacionCupoInvalid_Returns422UnprocessableEntity` |
-| 5a. Monto <= 0 en torneo pago | `400 Bad Request` | `CreateTorneoAsync_WhenPagoAndCostoZeroOrNegative_ThrowsCostoInvalidoException` | `CreateTorneo_WhenPagoWithInvalidCosto_Returns400BadRequest` |
-| 5b. Cuenta recaudadora inactiva (RN-05) | `422 Unprocessable Entity` | `CreateTorneoAsync_WhenPagoAndCuentaRecaudadoraInactive_ThrowsCuentaRecaudadoraInactivaException` | `CreateTorneo_WhenCuentaRecaudadoraInactive_Returns422UnprocessableEntity` |
+| 4a. Cupo no potencia de 2 (RN-04) | `422 Unprocessable Entity` | `CreateTorneoAsync_WhenEliminacionDirectaAndCupoNotPowerOfTwo_ThrowsCupoInvalidoEliminacionException`<br>`CreateAsync_EliminacionDirectaWithCupoMenorA4_ThrowsBusinessRuleConflictException` | `CreateTorneo_WhenEliminacionCupoInvalid_Returns422UnprocessableEntity`<br>`CU04_CreateTorneo_EliminacionDirecta_CupoNoPotenciaDe2_Retorna422`<br>`CU04_CreateTorneo_EliminacionDirecta_CupoMenorA4_RetornaError` |
+| 5a. Gratuito con costo != 0 | `400 Bad Request` | `CasoA_TorneoService_EsPagoFalseConCostoPositivo_LanzaCostoInvalidoException` | `CasoA_Integration_CrearTorneo_EsPagoFalseYCosto1000_Retorna400BadRequest`<br>`Fuzz_Torneo_EsPagoFalseConCostoPositivo_Retorna400BadRequest` |
+| 5b. Monto <= 0 en torneo pago | `400 Bad Request` | `CreateTorneoAsync_WhenPagoAndCostoZeroOrNegative_ThrowsCostoInvalidoException`<br>`CreateAsync_CostoInscripcionNegativo_ThrowsValidationException` | `CreateTorneo_WhenPagoWithInvalidCosto_Returns400BadRequest`<br>`CU04_CreateTorneo_PagoConCostoCero_Retorna400BadRequest` |
+| 5c. Cuenta recaudadora inactiva (RN-05) | `422 Unprocessable Entity` | `CreateTorneoAsync_WhenPagoAndCuentaRecaudadoraInactive_ThrowsCuentaRecaudadoraInactivaException` | `CreateTorneo_WhenCuentaRecaudadoraInactive_Returns422UnprocessableEntity`<br>`CU04_CreateTorneo_PagoSinCuentaRecaudadoraActiva_Retorna422UnprocessableEntity` |
 
 > Regla de oro: cada flujo del caso de uso cuenta con al menos un test unitario o de integración HTTP. La suite de pruebas completa se ejecuta mediante `dotnet test`.

@@ -26,28 +26,32 @@ Permite al Veedor o Árbitro registrar en tiempo real o diferido los eventos cr�
 - La Capa de Persistencia debe encontrarse accesible para almacenar los eventos y reflejar las variaciones de marcador.
 
 ### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 201 Created)
-1. El Actor envía una petición al endpoint `POST /api/partidos/{partidoId}/incidencias` con un JSON que contiene los datos del evento (`tipoIncidencia`, `minuto`, `jugadorId`, `equipoId`, `observaciones`).
-2. La **Capa de Presentación** (`IncidenciasController.RegistrarIncidencia`) valida que el JSON sea estructuralmente correcto, que los campos requeridos no sean nulos, que el minuto sea válido (`[Range(0, 150)]`) y que el tipo de incidencia corresponda a los valores permitidos (data annotations sobre `IncidenciaCreateDTO`).
+1. El Actor envía una petición al endpoint `POST /api/partidos/{partidoId}/incidencias` con un JSON que contiene los datos del evento (`tipoIncidencia`/`tipo`, `minuto`, `jugadorId`, `equipoId`, `observaciones`/`descripcion`).
+2. La **Capa de Presentación** (`IncidenciasController.RegistrarIncidencia`) valida que el JSON sea estructuralmente correcto:
+   - `tipoIncidencia`: debe ser un valor definido en el enum `TipoIncidencia` (`Enum.IsDefined`).
+   - `minuto`: valor entero entre 1 y 150 (`[Range(1, 150)]`).
+   - `jugadorId` y `equipoId`: identificadores GUID válidos no vacíos (`Guid.Empty` no permitido).
+   - `observaciones`: texto descriptivo opcional de hasta 300 caracteres, sin etiquetas HTML ni scripts.
 3. La **Capa de Negocio** (`IncidenciaService.RegistrarIncidenciaAsync`):
-   - Verifica la existencia del partido y que su estado actual admita la carga de eventos ("En Progreso" o "Pendiente de Carga").
+   - Verifica la existencia del partido y que su estado actual admita la carga de eventos ("En Progreso" o "Pendiente").
    - Verifica que el jugador pertenezca a la nómina oficial de alguno de los dos equipos intervinientes en el encuentro.
    - Comprueba que el jugador no registre sanciones disciplinarias previas inhabilitantes.
    - Verifica que el jugador no se encuentre en estado "Expulsado" en dicho encuentro.
    - Si la incidencia es una "Tarjeta Roja Directa", o si es una "Tarjeta Amarilla" y el jugador ya registraba una amonestación previa en el mismo partido: aplica la regla de negocio **RN-07**, cambia el estado del jugador a "Expulsado" e impide la carga de subsiguientes incidencias de juego para él.
    - Si la incidencia corresponde a "Gol" o "Punto", actualiza el marcador parcial acumulado para el equipo correspondiente.
 4. La **Capa de Persistencia** genera el ID único de la incidencia y guarda el registro en la tabla `Incidencias`, actualizando de forma atómica el marcador y el estado de los jugadores en las tablas `Partidos` y `PlanillaPartidos`.
-5. El Sistema devuelve un código **201 Created** con la cabecera `Location` y el payload resultante (ID de la incidencia, minuto, jugador, estado disciplinario actualizado y marcador parcial).
+5. El Sistema devuelve un código **201 Created** con la cabecera `Location` y el payload resultante `IncidenciaResponseDTO` (ID de la incidencia, minuto, jugador, estado disciplinario actualizado y marcador parcial).
 
 ### 4. FLUJOS ALTERNATIVOS (Caminos Tristes / Excepciones)
 
 * **1a. JSON inválido o con formato erróneo (HTTP 400 Bad Request):**
   1. Si en el Paso 1 el payload no es un JSON válido o posee tipos de datos incompatibles.
   2. El Sistema (Capa de Presentación / model binding) rechaza la petición.
-  3. El Sistema devuelve un código **400 Bad Request**. Fin del caso de uso.
+  3. El Sistema devuelve un código **400 Bad Request** con el formato `{ "error": "mensaje descriptivo" }`. Fin del caso de uso.
 
-* **2a. Datos requeridos faltantes o minuto fuera de rango (HTTP 400 Bad Request):**
-  1. Si en el Paso 2 falta el `tipoIncidencia`, `jugadorId`, o si el `minuto` es negativo o excede el límite estipulado.
-  2. El Sistema (Capa de Presentación) rechaza la petición por validación de modelo (`ModelState.IsValid == false`).
+* **2a. Datos requeridos faltantes, minuto fuera de rango o enum inválido (HTTP 400 Bad Request):**
+  1. Si en el Paso 2 falta el `tipoIncidencia`, `jugadorId` es `Guid.Empty`, o si el `minuto` es menor a 1 o mayor a 150, o se envía un entero no definido para el enum.
+  2. El Sistema (Capa de Presentación / DataAnnotations o Capa de Negocio) rechaza la petición lanzando `ValidationException`.
   3. El Sistema devuelve un código **400 Bad Request** detallando el error de validación. Fin del caso de uso.
 
 * **3a. Partido inexistente (HTTP 404 Not Found):**
@@ -121,11 +125,13 @@ Permite al Veedor o Árbitro registrar en tiempo real o diferido los eventos cr�
 | --- | --- | --- | --- |
 | Flujo principal | `201 Created` | `RegistrarIncidenciaAsync_WithValidData_ReturnsCreatedIncidenciaAndUpdatesScore` | `RegistrarIncidencia_WithValidData_Returns201Created` |
 | 1a. JSON inválido | `400 Bad Request` | — (model binding de ASP.NET Core) | `RegistrarIncidencia_WithMalformedJson_Returns400BadRequest` |
-| 2a. Minuto fuera de rango | `400 Bad Request` | — (detectado por `[Range]` en Presentación) | `RegistrarIncidencia_WithNegativeMinute_Returns400BadRequest` |
-| 3a. Partido inexistente | `404 Not Found` | `RegistrarIncidenciaAsync_WhenPartidoDoesNotExist_ThrowsPartidoNotFoundException` | `RegistrarIncidencia_WhenPartidoNotFound_Returns404NotFound` |
+| 2a. Minuto fuera de rango | `400 Bad Request` | — (detectado por `[Range]` en Presentación) | `RegistrarIncidencia_WithNegativeMinute_Returns400BadRequest`<br>`CU11_RegistrarIncidencia_MinutoInvalido_Retorna400BadRequest` |
+| 2a. Enum Tipo fuera de rango | `400 Bad Request` | `Vector1_IncidenciaService_TipoInvalido_LanzaValidationException` | `Vector1_EnumsFueraDeRango_Retorna4xxNunca500` |
+| 2a. Guid Empty | `400 Bad Request` | `Vector4_IncidenciaService_GuidEmpty_LanzaValidationException` | `Vector4_GuidEmptyYColeccionesNulasOConElementosNull_Retorna400BadRequest` |
+| 3a. Partido inexistente | `404 Not Found` | `RegistrarIncidenciaAsync_WhenPartidoDoesNotExist_ThrowsPartidoNotFoundException` | `RegistrarIncidencia_WhenPartidoNotFound_Returns404NotFound`<br>`CU11_RegistrarIncidencia_PartidoInexistente_Retorna404NotFound` |
 | 3b. Partido no habilitado | `409 Conflict` | `RegistrarIncidenciaAsync_WhenPartidoNotEditable_ThrowsPartidoEstadoInvalidoException` | `RegistrarIncidencia_WhenPartidoFinished_Returns409Conflict` |
 | 3c. Jugador no pertenece | `422 Unprocessable Entity` | `RegistrarIncidenciaAsync_WhenPlayerNotInTeams_ThrowsJugadorNoAsignadoException` | `RegistrarIncidencia_WhenPlayerNotInTeams_Returns422UnprocessableEntity` |
 | 3d. Jugador inhabilitado | `409 Conflict` | `RegistrarIncidenciaAsync_WhenPlayerSuspended_ThrowsJugadorInhabilitadoException` | `RegistrarIncidencia_WhenPlayerSuspended_Returns409Conflict` |
-| 3e. Expulsión / 2da amarilla (RN-07) | `201 Created` / `409 Conflict` | `RegistrarIncidenciaAsync_WhenSecondYellow_SetsPlayerExpulsado`<br>`RegistrarIncidenciaAsync_WhenPlayerAlreadyExpulsado_ThrowsJugadorExpulsadoException` | `RegistrarIncidencia_WhenSecondYellow_SetsExpulsado`<br>`RegistrarIncidencia_WhenPlayerAlreadyExpulsado_Returns409Conflict` |
+| 3e. Expulsión / 2da amarilla (RN-07) | `201 Created` / `409 Conflict` | `RegistrarIncidenciaAsync_WhenSecondYellow_SetsPlayerExpulsado`<br>`RegistrarIncidenciaAsync_WhenDirectRedCard_SetsPlayerExpulsado`<br>`RegistrarIncidenciaAsync_WhenPlayerAlreadyExpulsado_ThrowsJugadorExpulsadoException` | `RegistrarIncidencia_WhenSecondYellow_SetsExpulsado`<br>`RegistrarIncidencia_WhenPlayerAlreadyExpulsado_Returns409Conflict` |
 
 > Regla de oro: cada flujo del caso de uso cuenta con al menos un test unitario o de integración HTTP. La suite de pruebas completa se ejecuta mediante `dotnet test`.

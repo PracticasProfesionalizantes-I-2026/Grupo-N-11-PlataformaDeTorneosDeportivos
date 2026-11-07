@@ -490,7 +490,7 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
 
 ## 5. Estado y Cobertura de las Pruebas
 
-Toda la solución se valida con una suite integral de **176 pruebas automatizadas** que corren en integración continua:
-- **`BusinessLogic.Tests`**: 93 pruebas unitarias completas bajo el patrón Arrange-Act-Assert con `Moq`.
-- **`API.IntegrationTests`**: 83 pruebas de integración con servidor en memoria `CustomWebApplicationFactory<Program>`, SQLite y deserialización JSON.
+Toda la solución se valida con una suite integral de **406 pruebas automatizadas** que corren en integración continua:
+- **`BusinessLogic.Tests`**: 146 pruebas unitarias completas bajo el patrón Arrange-Act-Assert con `Moq`, incluyendo auditoría y fuzzing adversarial (`RedTeamFuzzingServiceTests.cs`).
+- **`API.IntegrationTests`**: 260 pruebas de integración con servidor en memoria `CustomWebApplicationFactory<Program>`, SQLite y deserialización JSON, incluyendo batería adversarial de casos borde (`AdversarialCasosDeUsoIntegrationTests.cs`) y suite de validaciones exhaustivas (`ValidacionesExhaustivasIntegrationTests.cs`).
 - **Colección Bruno (`bruno/`)**: 73 archivos de pruebas `.bru` que cubren escenarios exitosos (200, 201) y todas las ramas de error (400, 401, 403, 404, 409, 422).

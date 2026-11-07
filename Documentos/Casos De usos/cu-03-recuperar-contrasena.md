@@ -68,7 +68,7 @@ Permite a un usuario restablecer su contraseña mediante un enlace seguro enviad
 
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
-| Flujo principal | `200 OK` | `RecoverPasswordAsync_WithValidEmail_GeneratesToken` / `ResetPasswordAsync_UpdatesPassword` | `RecoverPassword_And_ResetPassword_Returns200OK` |
-| 3a. Correo no registrado | `200 OK` | `RecoverPasswordAsync_WithNonExistentEmail_DoesNothing` | `RecoverPassword_WithNonExistentEmail_Returns200OK` |
-| 6a. Contraseña inválida | `400 Bad Request` | — (validación DTO) | `ResetPassword_WithInvalidPasswordFormat_Returns400BadRequest` |
-| 7a. Token Expirado/Usado | `400 Bad Request` | `ResetPasswordAsync_WithInvalidToken_ThrowsValidationException` | `ResetPassword_WithInvalidToken_Returns400BadRequest` |
+| Flujo principal | `200 OK` | `RecoverPasswordAsync_WithValidEmail_GeneratesToken`<br>`ResetPasswordAsync_UpdatesPassword` | `CU03_ResetPassword_TokenInvalidoOInexistente_Retorna400BadRequest` |
+| 3a. Correo no registrado | `200 OK` | `RecoverPasswordAsync_WithNonExistentEmail_DoesNothing` | — (comportamiento silencioso seguro) |
+| 6a. Contraseña inválida o débil | `400 Bad Request` | — (validación DTO DataAnnotations) | `CU03_ResetPassword_PasswordDebil_Retorna400BadRequest` |
+| 7a. Token Expirado/Usado/Inexistente | `400 Bad Request` | `ResetPasswordAsync_WithInvalidToken_ThrowsValidationException`<br>`ResetPasswordAsync_WithExpiredToken_ThrowsValidationException` | `CU03_ResetPassword_TokenInvalidoOInexistente_Retorna400BadRequest` |

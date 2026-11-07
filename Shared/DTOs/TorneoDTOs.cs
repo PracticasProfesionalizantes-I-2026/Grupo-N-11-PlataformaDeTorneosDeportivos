@@ -18,6 +18,8 @@ namespace Shared.DTOs
         public int? DisciplinaId { get; set; }
         public Modalidad Modalidad { get; set; }
         public int? ModalidadId { get; set; }
+
+        [Range(2, 128, ErrorMessage = "El cupo máximo debe estar entre 2 y 128 equipos.")]
         public int CupoMaximo { get; set; }
         public bool EsPago { get; set; }
         public decimal CostoInscripcion { get; set; }
@@ -47,6 +49,11 @@ namespace Shared.DTOs
             if (ModalidadId.HasValue && !Enum.IsDefined(typeof(Modalidad), ModalidadId.Value))
             {
                 yield return new ValidationResult("El identificador de modalidad especificado no es válido.", new[] { nameof(ModalidadId) });
+            }
+
+            if (CupoMaximo < 2 || CupoMaximo > 128)
+            {
+                yield return new ValidationResult("El cupo máximo debe estar entre 2 y 128 equipos.", new[] { nameof(CupoMaximo) });
             }
 
             if (CostoInscripcion < 0 || CostoInscripcion > 100_000_000m)
@@ -114,6 +121,8 @@ namespace Shared.DTOs
         public int? DisciplinaId { get; set; }
         public Modalidad Modalidad { get; set; }
         public int? ModalidadId { get; set; }
+
+        [Range(2, 128, ErrorMessage = "El cupo máximo debe estar entre 2 y 128 equipos.")]
         public int CupoMaximo { get; set; }
         public bool EsPago { get; set; }
         public decimal CostoInscripcion { get; set; }
@@ -145,6 +154,11 @@ namespace Shared.DTOs
                 yield return new ValidationResult("El identificador de modalidad especificado no es válido.", new[] { nameof(ModalidadId) });
             }
 
+            if (CupoMaximo < 2 || CupoMaximo > 128)
+            {
+                yield return new ValidationResult("El cupo máximo debe estar entre 2 y 128 equipos.", new[] { nameof(CupoMaximo) });
+            }
+
             if (CostoInscripcion < 0 || CostoInscripcion > 100_000_000m)
             {
                 yield return new ValidationResult("El costo de inscripción no puede ser negativo ni superar los 100.000.000.", new[] { nameof(CostoInscripcion) });
@@ -156,6 +170,44 @@ namespace Shared.DTOs
             else if (EsPago && CostoInscripcion <= 0)
             {
                 yield return new ValidationResult("El costo debe ser mayor a cero para torneos pagos", new[] { nameof(CostoInscripcion) });
+            }
+
+            if (Descripcion != null)
+            {
+                var descTrim = Descripcion.Trim();
+                if (string.IsNullOrWhiteSpace(descTrim) || descTrim.Length > 1000 || descTrim.Contains('<') || descTrim.Contains('>'))
+                {
+                    yield return new ValidationResult("La descripción no puede estar vacía, superar los 1000 caracteres ni contener etiquetas HTML.", new[] { nameof(Descripcion) });
+                }
+            }
+
+            if (Reglamento != null)
+            {
+                var regTrim = Reglamento.Trim();
+                if (string.IsNullOrWhiteSpace(regTrim) || regTrim.Length > 2000 || regTrim.Contains('<') || regTrim.Contains('>'))
+                {
+                    yield return new ValidationResult("El reglamento no puede estar vacío, superar los 2000 caracteres ni contener etiquetas HTML.", new[] { nameof(Reglamento) });
+                }
+            }
+
+            if (FechaInicio.HasValue)
+            {
+                if (FechaInicio.Value == default || FechaInicio.Value.Date < DateTime.Today || FechaInicio.Value.Year > 2100)
+                {
+                    yield return new ValidationResult("La fecha de inicio del torneo no puede estar en el pasado ni ser inválida.", new[] { nameof(FechaInicio) });
+                }
+            }
+
+            if (FechaFin.HasValue)
+            {
+                if (FechaFin.Value == default || FechaFin.Value.Date < DateTime.Today || FechaFin.Value.Year > 2100)
+                {
+                    yield return new ValidationResult("La fecha de finalización del torneo no puede estar en el pasado ni ser inválida.", new[] { nameof(FechaFin) });
+                }
+                else if (FechaInicio.HasValue && FechaFin.Value.Date < FechaInicio.Value.Date)
+                {
+                    yield return new ValidationResult("La fecha de finalización no puede ser anterior a la fecha de inicio.", new[] { nameof(FechaFin) });
+                }
             }
         }
     }

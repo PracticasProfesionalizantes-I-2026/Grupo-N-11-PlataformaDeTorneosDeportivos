@@ -121,8 +121,8 @@ Permite al Organizador generar de forma automatizada el calendario completo de p
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
 | Flujo principal | `201 Created` | `GenerarFixtureAsync_WithValidData_ReturnsCreatedFixtureAndLocksTournament` | `GenerarFixture_WithValidData_Returns201Created` |
-| 1a. JSON inválido | `400 Bad Request` | — (model binding de ASP.NET Core) | `GenerarFixture_WithMalformedJson_Returns400BadRequest` |
-| 2a. Fecha de inicio pasada | `400 Bad Request` | — (detectado por validación de DTO en Presentación) | `GenerarFixture_WithPastStartDate_Returns400BadRequest` |
+| 1a. JSON inválido | `400 Bad Request` | — (model binding de ASP.NET Core) | `GenerarFixture_WithMalformedJson_Returns400BadRequest`<br>`Fuzzing_JsonRotoOTiposIncompatibles_Retorna400ConFormatoErrorUnificado` |
+| 2a. Fecha de inicio pasada u horario absurdo | `400 Bad Request` | — (detectado por validación de DTO en Presentación) | `GenerarFixture_WithPastStartDate_Returns400BadRequest`<br>`Vector5_FechasYHorariosAbsurdosEnFixture_Retorna400BadRequest` |
 | 3a. Torneo inexistente | `404 Not Found` | `GenerarFixtureAsync_WhenTorneoDoesNotExist_ThrowsTorneoNotFoundException` | `GenerarFixture_WhenTorneoNotFound_Returns404NotFound` |
 | 3b. Torneo en estado no cerrado | `409 Conflict` | `GenerarFixtureAsync_WhenTorneoNotClosed_ThrowsTorneoEstadoInvalidoException` | `GenerarFixture_WhenTorneoNotClosed_Returns409Conflict` |
 | 3c. Menos de 4 equipos confirmados | `422 Unprocessable Entity` | `GenerarFixtureAsync_WhenTeamsBelowFour_ThrowsEquiposInsuficientesException` | `GenerarFixture_WhenTeamsBelowFour_Returns422UnprocessableEntity` |

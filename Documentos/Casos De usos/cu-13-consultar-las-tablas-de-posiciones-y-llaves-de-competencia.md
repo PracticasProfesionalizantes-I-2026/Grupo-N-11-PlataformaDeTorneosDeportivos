@@ -20,23 +20,27 @@ Permite a los usuarios consultar las tablas (puntos, PG, PE, PP, GF, GC, Dif) o 
 - El torneo consultado debe existir en la plataforma.
 - El torneo debe encontrarse en estado "En Desarrollo" o "Finalizado".
 
-### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 200)
-1. El Actor envía una petición al endpoint `GET /api/torneos/{id}/posiciones` o `GET /api/torneos/{id}/llaves`.
-2. La **Capa de Presentación** procesa el identificador del torneo.
-3. La **Capa de Negocio** verifica la existencia del torneo y su modalidad (Liga o Eliminación Directa).
-4. La **Capa de Negocio** recupera los partidos finalizados y calcula dinámicamente las estadísticas de los equipos (puntos, diferencia de goles) o la estructura del bracket.
-5. El Sistema devuelve un código **200 OK** con la colección de posiciones debidamente ordenada por los criterios de desempate computados, o el diagrama de árbol (llaves).
+### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 200 OK)
+1. El Actor envía una petición al endpoint `GET /api/torneos/{id}/posiciones` (para torneos de Liga) o `GET /api/torneos/{id}/llaves` (para torneos de Eliminación Directa).
+2. La **Capa de Presentación** (`TorneosController.GetPosiciones` / `TorneosController.GetLlaves`) procesa el identificador del torneo.
+3. La **Capa de Negocio** (`TorneoService.GetPosicionesAsync` / `TorneoService.GetLlavesAsync`):
+   - Verifica la existencia del torneo (lanza `NotFoundException` 404 si no existe).
+   - Verifica la compatibilidad de modalidad (Liga para posiciones, Eliminación Directa para llaves; si no coincide, lanza `ValidationException` 400).
+4. La **Capa de Negocio** recupera los partidos finalizados y calcula dinámicamente:
+   - Para Liga: Puntos (3 victoria, 1 empate, 0 derrota), Partidos Jugados, PG, PE, PP, Goles a Favor, Goles en Contra y Diferencia de Gol. Aplica criterios de desempate ordenando por Puntos descendente, Diferencia de Gol descendente, Goles a Favor descendente y Nombre alfabético.
+   - Para Eliminación Directa: Estructura del bracket por rondas (Octavos, Cuartos, Semifinal, Final) con ganadores avanzando.
+5. El Sistema devuelve un código **200 OK** con la colección de `PosicionTablaDTO` o el árbol de `LlaveTorneoDTO`.
 
 ### 4. FLUJOS ALTERNATIVOS (Caminos Tristes / Excepciones)
 
-* **3a. Modalidad incorrecta consultada (HTTP 400 Bad Request):**
-  1. Si en el Paso 3 se intenta consultar la "Tabla de Posiciones" de un torneo que es estrictamente de "Eliminación Directa" (o viceversa).
-  2. La **Capa de Negocio** detecta que la consulta no aplica para la configuración del torneo.
-  3. El Sistema devuelve un código **400 Bad Request** notificando que la vista solicitada no es compatible con el formato del torneo. Fin del caso de uso.
+* **3a. Modalidad incompatible consultada (HTTP 400 Bad Request):**
+  1. Si en el Paso 3 se solicita la "Tabla de Posiciones" de un torneo de Eliminación Directa, o las "Llaves" de un torneo de Liga.
+  2. La **Capa de Negocio** detecta que la consulta no aplica para la modalidad del torneo y lanza `ValidationException`.
+  3. El Sistema devuelve un código **400 Bad Request** con el mensaje: `"El torneo no es de modalidad Liga. Para eliminación directa consulte /llaves"` o viceversa. Fin del caso de uso.
 
 * **3b. Torneo Inexistente (HTTP 404 Not Found):**
-  1. Si en el Paso 3 el ID del torneo enviado no existe.
-  2. La **Capa de Negocio** no encuentra la entidad en la Base de Datos.
+  1. Si en el Paso 3 el ID del torneo no existe en la base de datos.
+  2. La **Capa de Negocio** no encuentra la entidad y lanza `NotFoundException`.
   3. El Sistema devuelve un error **404 Not Found**. Fin del caso de uso.
 
 ### 5. SUB-VARIACIONES
@@ -62,6 +66,8 @@ Permite a los usuarios consultar las tablas (puntos, PG, PE, PP, GF, GC, Dif) o 
 
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
-| Flujo principal | `200 OK` | `GetPosicionesAsync_CalculatesAndReturnsStandings` | `GetPosiciones_Returns200OK` |
-| 3a. Modalidad incompatible | `400 Bad Request` | `GetPosicionesAsync_WhenTorneoIsBrackets_ThrowsValidationException` | `GetPosiciones_WhenTorneoIsElimination_Returns400BadRequest` |
-| 3b. Torneo inexistente | `404 Not Found` | `GetPosicionesAsync_WhenTorneoNotFound_ThrowsNotFoundException` | `GetPosiciones_WhenTorneoDoesNotExist_Returns404NotFound` |
+| Flujo principal (Posiciones Liga) | `200 OK` | `GetPosicionesAsync_CalculatesAndReturnsStandings`<br>`GetPosicionesAsync_WithTieBreakers_SortsByDiferenciaGolesThenGolesAFavorThenNombre` | `GetPosiciones_Returns200OK` |
+| Flujo principal (Llaves Brackets) | `200 OK` | `GetLlavesAsync_CalculatesAndReturnsBrackets` | `GetLlaves_Returns200OK` |
+| 3a. Posiciones en Eliminación Directa | `400 Bad Request` | `GetPosicionesAsync_WhenTorneoIsBrackets_ThrowsValidationException` | `GetPosiciones_WhenTorneoIsElimination_Returns400BadRequest`<br>`CU13_GetPosiciones_TorneoEliminacionDirecta_Retorna400BadRequest` |
+| 3a. Llaves en Liga | `400 Bad Request` | `GetLlavesAsync_WhenTorneoIsLiga_ThrowsValidationException` | `GetLlaves_WhenTorneoIsLiga_Returns400BadRequest` |
+| 3b. Torneo inexistente | `404 Not Found` | `GetPosicionesAsync_WhenTorneoNotFound_ThrowsNotFoundException`<br>`GetLlavesAsync_WhenTorneoNotFound_ThrowsNotFoundException` | `GetPosiciones_WhenTorneoDoesNotExist_Returns404NotFound`<br>`GetLlaves_WhenTorneoDoesNotExist_Returns404NotFound`<br>`CU13_GetPosiciones_TorneoInexistente_Retorna404NotFound` |

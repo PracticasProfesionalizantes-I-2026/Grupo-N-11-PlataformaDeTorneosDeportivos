@@ -67,7 +67,8 @@ Permite a un usuario registrado autenticarse en el sistema utilizando su email/D
 
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
-| Flujo principal | `200 OK` | `LoginAsync_WithValidCredentials_ReturnsToken` | `Login_WithValidCredentials_Returns200OK` |
+| Flujo principal (Email) | `200 OK` | `LoginAsync_WithValidCredentials_ReturnsToken` | `Login_WithValidCredentials_Returns200OK` |
+| Flujo principal (DNI) | `200 OK` | `LoginAsync_WithValidDni_ReturnsToken` | `Login_WithValidCredentials_Returns200OK` |
 | 2a. Datos incompletos | `400 Bad Request` | — (validación DTO) | `Login_WithMissingCredentials_Returns400BadRequest` |
-| 3a. Credenciales incorrectas | `401 Unauthorized` | `LoginAsync_WithInvalidCredentials_ThrowsUnauthorizedException` | `Login_WithInvalidCredentials_Returns401Unauthorized` |
-| 4a. Cuenta bloqueada | `403 Forbidden` | `LoginAsync_WhenAccountIsInactive_ThrowsForbiddenException` | `Login_WhenAccountIsInactive_Returns403Forbidden` |
+| 3a. Credenciales incorrectas | `401 Unauthorized` | `LoginAsync_WithInvalidCredentials_ThrowsUnauthorizedException`<br>`LoginAsync_WithInvalidCredentials_ThrowsUnauthorizedException_WhenUserNotFound`<br>`LoginAsync_WithInvalidCredentials_ThrowsUnauthorizedException_WhenPasswordDoesNotMatch` | `Login_WithInvalidCredentials_Returns401Unauthorized`<br>`CU02_Login_UsuarioInexistente_Retorna401Unauthorized`<br>`CU02_Login_PasswordErronea_Retorna401Unauthorized` |
+| 4a. Cuenta bloqueada / inactiva | `403 Forbidden` | `LoginAsync_WhenAccountIsInactive_ThrowsForbiddenException` | `Login_WhenAccountIsInactive_Returns403Forbidden`<br>`CU02_Login_CuentaInactiva_Retorna403Forbidden` |

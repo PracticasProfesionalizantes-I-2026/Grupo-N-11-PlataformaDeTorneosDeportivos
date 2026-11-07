@@ -20,30 +20,39 @@ Permite al Veedor o Administrador cargar únicamente el marcador final de un par
 - El partido debe estar configurado en el sistema y encontrarse en estado "Pendiente" o "En Juego".
 - El usuario debe contar con los permisos correspondientes para reportar resultados.
 
-### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 200)
-1. El Actor envía una petición al endpoint `PUT /api/partidos/{id}/resultado` con el JSON de los marcadores finales (Ej. `marcadorA` y `marcadorB`).
-2. La **Capa de Presentación** valida que los marcadores sean valores numéricos no negativos y no falten datos.
-3. La **Capa de Negocio** verifica el estado actual del partido y aplica la lógica de desempate en caso de corresponder.
-4. La **Capa de Persistencia** actualiza el partido y cambia su estado a "Finalizado".
-5. El Sistema desencadena internamente la actualización de las tablas de posiciones o los cruces de eliminatoria en la base de datos y la cartelera pública.
-6. El Sistema devuelve un código **200 OK** confirmando que el marcador y el estado se han guardado exitosamente.
+### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 200 OK)
+1. El Actor envía una petición al endpoint `PUT /api/partidos/{id}/resultado` con el JSON de `CargarResultadoDTO` (`MarcadorLocal`, `MarcadorVisitante`, y opcionalmente `PenalesLocal`, `PenalesVisitante`).
+2. La **Capa de Presentación** (`PartidosController.UpdateResultado`) valida que los marcadores sean valores numéricos enteros no negativos comprendidos entre 0 y 999 (data annotations `[Range(0, 999)]`).
+3. La **Capa de Negocio** (`PartidoService.LoadResultadoAsync`):
+   - Verifica la existencia del partido en la base de datos (lanza `NotFoundException` 404 si no existe).
+   - Verifica que el partido se encuentre en estado editable (`Pendiente` o `EnProgreso`).
+   - Si el torneo es de modalidad "Eliminación Directa" y los marcadores están empatados, valida que se hayan remitido los resultados de penales/desempate y que definan un ganador unívoco (no empate en penales).
+   - Asigna los marcadores definitivos y cambia el estado del partido a `Finalizado`.
+4. La **Capa de Persistencia** actualiza el registro en la tabla `Partidos`.
+5. El Sistema desencadena la actualización de las tablas de posiciones o el avance del clasificado a la siguiente ronda de llaves (brackets).
+6. El Sistema devuelve un código **200 OK** con el payload `PartidoResponseDTO` confirmando el marcador y estado final.
 
 ### 4. FLUJOS ALTERNATIVOS (Caminos Tristes / Excepciones)
 
-* **2a. Marcadores inválidos (HTTP 400 Bad Request):**
-  1. Si en el Paso 2 los marcadores provistos son negativos, nulos o con formato no numérico.
-  2. La **Capa de Presentación** rechaza la petición.
-  3. El Sistema devuelve un código **400 Bad Request**. Fin del caso de uso.
+* **2a. Marcadores inválidos o fuera de rango (HTTP 400 Bad Request):**
+  1. Si en el Paso 2 los marcadores provistos son negativos, mayores a 999, o los penales poseen formato inválido o empate.
+  2. La **Capa de Presentación** o la **Capa de Negocio** rechaza la petición lanzando `ValidationException`.
+  3. El Sistema devuelve un código **400 Bad Request** con el formato `{ "error": "mensaje descriptivo" }`. Fin del caso de uso.
 
-* **3a. Partido no apto para recibir resultados (HTTP 409 Conflict):**
-  1. Si en el Paso 3 el partido ya se encuentra en estado "Finalizado" o ha sido "Cancelado".
-  2. La **Capa de Negocio** frena la operación.
+* **3a. Partido Inexistente (HTTP 404 Not Found):**
+  1. Si en el Paso 3 el ID del partido no existe en la base de datos.
+  2. La **Capa de Negocio** lanza `NotFoundException`.
+  3. El Sistema devuelve un código **404 Not Found**. Fin del caso de uso.
+
+* **3b. Partido no apto para recibir resultados (HTTP 409 Conflict):**
+  1. Si en el Paso 3 el partido ya se encuentra en estado `Finalizado` o ha sido `Cancelado`.
+  2. La **Capa de Negocio** frena la operación y lanza `BusinessRuleConflictException`.
   3. El Sistema devuelve un error **409 Conflict** indicando que el partido no admite carga de resultados en su estado actual. Fin del caso de uso.
 
-* **3b. Empate no permitido en Eliminación Directa (HTTP 409 Conflict):**
-  1. Si en el Paso 3 el partido pertenece a una llave de eliminación directa (brackets) y se envía un marcador igualado sin datos de desempate (penales/tiempo extra).
-  2. La **Capa de Negocio** detecta la violación de modalidad.
-  3. El Sistema devuelve un código **409 Conflict** indicando: "Esta modalidad no admite empates. Debe definir el ganador (Penales/Tiempo Extra)". Fin del caso de uso.
+* **3c. Empate no permitido en Eliminación Directa (HTTP 409 Conflict):**
+  1. Si en el Paso 3 el partido pertenece a una llave de eliminación directa y el marcador final resulta empatado sin haberse definido un ganador mediante penales/desempate.
+  2. La **Capa de Negocio** detecta la violación y lanza `BusinessRuleConflictException`.
+  3. El Sistema devuelve un código **409 Conflict** indicando: `"Esta modalidad no admite empates. Debe definir el ganador (Penales/Tiempo Extra)"`. Fin del caso de uso.
 
 ### 5. SUB-VARIACIONES
 - Si el partido requiere desempate, el payload enviado puede incluir opcionalmente `penalesEquipoA` y `penalesEquipoB` que serán procesados en el mismo endpoint.
@@ -69,7 +78,8 @@ Permite al Veedor o Administrador cargar únicamente el marcador final de un par
 
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
-| Flujo principal | `200 OK` | `LoadResultadoAsync_UpdatesScoreAndStatus` | `UpdateResultado_Returns200OK` |
-| 2a. Marcadores inválidos | `400 Bad Request` | — (validación DTO) | `UpdateResultado_WithNegativeScores_Returns400BadRequest` |
-| 3a. Partido cerrado | `409 Conflict` | `LoadResultadoAsync_WhenPartidoAlreadyFinished_ThrowsConflict` | `UpdateResultado_WhenPartidoClosed_Returns409Conflict` |
-| 3b. Empate en eliminatoria| `409 Conflict` | `LoadResultadoAsync_WhenDrawInEliminationPhase_ThrowsConflict` | `UpdateResultado_WhenDrawInElimination_Returns409Conflict` |
+| Flujo principal | `200 OK` | `LoadResultadoAsync_UpdatesScoreAndStatus`<br>`LoadResultadoAsync_WhenDrawInEliminationPhaseWithValidPenales_UpdatesScoreAndStatus` | `UpdateResultado_Returns200OK` |
+| 2a. Marcadores inválidos | `400 Bad Request` | `LoadResultadoAsync_WhenNegativeScore_ThrowsValidationException` | `UpdateResultado_WithNegativeScores_Returns400BadRequest`<br>`CU10_CargarResultado_MarcadorNegativo_Retorna400BadRequest`<br>`Vector3_AtaquesNumericosEnCostosMarcadoresYMinutos_Retorna400BadRequest` |
+| 3a. Partido Inexistente | `404 Not Found` | `LoadResultadoAsync_WhenPartidoNotFound_ThrowsNotFound` | `CU10_CargarResultado_PartidoInexistente_Retorna404NotFound` |
+| 3b. Partido cerrado | `409 Conflict` | `LoadResultadoAsync_WhenPartidoAlreadyFinished_ThrowsConflict` | `UpdateResultado_WhenPartidoClosed_Returns409Conflict` |
+| 3c. Empate en eliminatoria | `409 Conflict` | `LoadResultadoAsync_WhenDrawInEliminationPhase_ThrowsConflict` | `UpdateResultado_WhenDrawInElimination_Returns409Conflict` |

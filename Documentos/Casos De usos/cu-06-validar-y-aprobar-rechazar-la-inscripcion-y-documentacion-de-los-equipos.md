@@ -67,9 +67,9 @@ Permite al Organizador auditar las solicitudes de inscripción de los equipos, a
   3. El Sistema devuelve un código **422 Unprocessable Entity** con el mensaje: `"No es posible confirmar la inscripción sin acreditar el pago correspondiente (RN-06)"`. Fin del caso de uso.
 
 * **3d. Rechazo de la solicitud con observaciones (Camino Alternativo - HTTP 200 OK):**
-  1. Si el Organizador opta por observar o rechazar la solicitud, envía una petición a `PATCH /api/torneos/{torneoId}/equipos/{equipoId}/rechazar` incluyendo obligatoriamente el atributo `motivoRechazo`.
-  2. Si el `motivoRechazo` viene nulo, vacío o supera el límite de caracteres, la Capa de Presentación rechaza con código **400 Bad Request**.
-  3. La Capa de Negocio cambia el estado del equipo a "Rechazado / Observado", mantiene intacto el cupo del torneo y libera la edición de la lista de buena fe para el Capitán, en cumplimiento de la regla **RN-03**.
+  1. Si el Organizador opta por observar o rechazar la solicitud, envía una petición a `PATCH /api/torneos/{torneoId}/equipos/{equipoId}/rechazar` incluyendo obligatoriamente el atributo `motivoRechazo` (o `motivo`), con una longitud válida entre 3 y 500 caracteres sin caracteres peligrosos.
+  2. Si el `motivoRechazo` viene nulo, solo espacios en blanco, menor a 3 caracteres o superior a 500 caracteres, la Capa de Presentación o de Negocio rechaza la operación lanzando `ValidationException` con código **400 Bad Request**.
+  3. La Capa de Negocio cambia el estado del equipo a "Rechazado / Observado", mantiene intacto el cupo del torneo y libera la edición de la lista de buena fe para el Capitán (`EdicionListaHabilitada = true`), en cumplimiento estricto de la regla **RN-03**.
   4. El Sistema despacha una notificación al Capitán detallando los motivos de la observación.
   5. El Sistema devuelve un código **200 OK** confirmando el estado "Rechazado / Observado" y habilitando la subsanación. Fin del caso de uso.
 
@@ -112,12 +112,12 @@ Permite al Organizador auditar las solicitudes de inscripción de los equipos, a
 | --- | --- | --- | --- |
 | Flujo principal (Aprobación) | `200 OK` | `AprobarInscripcionAsync_WithValidData_ReturnsAprobadoDTOAndDecrementsCupo` | `AprobarInscripcion_WithValidTeam_Returns200Ok` |
 | Flujo principal (Último cupo confirmado) | `200 OK` | `AprobarInscripcionAsync_WhenLastSpotConfirmed_ClosesTournamentInscriptions` | `AprobarInscripcion_WhenLastSpotConfirmed_TransitionsTournamentToInscripcionesCerradas` |
-| 1a. Identificadores inválidos | `400 Bad Request` | — (validación de ruta / model binding) | `AprobarInscripcion_WithMalformedIds_Returns400BadRequest` |
-| 2a. Torneo o equipo inexistente | `404 Not Found` | `AprobarInscripcionAsync_WhenEntityDoesNotExist_ThrowsRecursoNotFoundException` | `AprobarInscripcion_WhenNotFound_Returns404NotFound` |
+| 1a. Identificadores inválidos | `400 Bad Request` | — (validación de ruta / model binding) | `AprobarInscripcion_WithMalformedIds_Returns400BadRequest`<br>`Fuzzing_GuidMalformadoEnRuta_Retorna400BadRequest` |
+| 2a. Torneo o equipo inexistente | `404 Not Found` | `AprobarInscripcionAsync_WhenEntityDoesNotExist_ThrowsRecursoNotFoundException` | `AprobarInscripcion_WhenNotFound_Returns404NotFound`<br>`CU06_AprobarInscripcion_TorneoOEquipoInexistente_Retorna404NotFound` |
 | 3a. Estado no pendiente | `409 Conflict` | `AprobarInscripcionAsync_WhenTeamNotPending_ThrowsEstadoEquipoInvalidoException` | `AprobarInscripcion_WhenTeamAlreadyProcessed_Returns409Conflict` |
 | 3b. Cupo lleno (RN-06) | `409 Conflict` | `AprobarInscripcionAsync_WhenTournamentFull_ThrowsTorneoCupoLlenoException` | `AprobarInscripcion_WhenTournamentFull_Returns409Conflict` |
 | 3c. Pago no validado (RN-06) | `422 Unprocessable Entity` | `AprobarInscripcionAsync_WhenPagoNotValidated_ThrowsPagoRequeridoException` | `AprobarInscripcion_WhenUnpaidTournament_Returns422UnprocessableEntity` |
 | 3d. Rechazo con motivo (RN-03) | `200 OK` | `RechazarInscripcionAsync_WithReason_UnlocksListAndSetsObservado` | `RechazarInscripcion_WithValidReason_Returns200Ok` |
-| 3d. Rechazo sin motivo | `400 Bad Request` | — (detectado por `[Required]` en DTO de rechazo) | `RechazarInscripcion_WithEmptyReason_Returns400BadRequest` |
+| 3d. Rechazo sin motivo o inválido | `400 Bad Request` | `Vector2_InscripcionService_MotivoRechazoVacio_LanzaValidationException` | `RechazarInscripcion_WithEmptyReason_Returns400BadRequest`<br>`CU06_RechazarInscripcion_SinMotivo_Retorna400BadRequest` |
 
 > Regla de oro: cada flujo del caso de uso cuenta con al menos un test unitario o de integración HTTP. La suite de pruebas completa se ejecuta mediante `dotnet test`.

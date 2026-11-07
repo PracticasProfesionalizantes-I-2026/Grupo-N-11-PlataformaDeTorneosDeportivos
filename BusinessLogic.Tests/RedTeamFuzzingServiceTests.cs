@@ -544,5 +544,63 @@ namespace BusinessLogic.Tests
                 UrlDestino = "https://sponsor.com"
             }));
         }
+
+        [Fact]
+        public void TorneoCreateDTO_CupoMaximoInvalido_FallaValidacion()
+        {
+            var dtoBajo = new TorneoCreateDTO
+            {
+                Nombre = "Torneo Cupo Bajo",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 1,
+                EsPago = false,
+                CostoInscripcion = 0
+            };
+
+            var contextBajo = new System.ComponentModel.DataAnnotations.ValidationContext(dtoBajo);
+            var resultsBajo = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+            var isValidBajo = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(dtoBajo, contextBajo, resultsBajo, true);
+            Assert.False(isValidBajo);
+
+            var dtoAlto = new TorneoCreateDTO
+            {
+                Nombre = "Torneo Cupo Alto",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 200,
+                EsPago = false,
+                CostoInscripcion = 0
+            };
+
+            var contextAlto = new System.ComponentModel.DataAnnotations.ValidationContext(dtoAlto);
+            var resultsAlto = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+            var isValidAlto = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(dtoAlto, contextAlto, resultsAlto, true);
+            Assert.False(isValidAlto);
+        }
+
+        [Fact]
+        public void TorneoUpdateDTO_PropiedadesExtendidas_FallaValidacionCuandoSonInvalidas()
+        {
+            var dto = new TorneoUpdateDTO
+            {
+                Nombre = "Torneo Valido",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                EsPago = false,
+                CostoInscripcion = 0,
+                Descripcion = new string('A', 1001), // Excede 1000
+                Reglamento = "<script>alert('xss')</script>", // Contiene HTML
+                FechaInicio = DateTime.Today.AddDays(-1), // En el pasado
+                FechaFin = DateTime.Today.AddDays(-5) // Fin antes de inicio
+            };
+
+            var context = new System.ComponentModel.DataAnnotations.ValidationContext(dto);
+            var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+            var isValid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(dto, context, results, true);
+            Assert.False(isValid);
+            Assert.True(results.Count >= 3);
+        }
     }
 }

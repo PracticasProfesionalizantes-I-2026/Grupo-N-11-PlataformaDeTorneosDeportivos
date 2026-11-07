@@ -20,12 +20,12 @@ Permite a cualquier usuario público (Capitanes, Jugadores, Espectadores) consul
 - El sistema debe tener acceso público o el usuario debe poder acceder a la vista del torneo.
 - El torneo seleccionado debe existir en la base de datos.
 
-### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 200)
+### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 200 OK)
 1. El Actor envía una petición al endpoint `GET /api/torneos/{id}/fixture` para obtener el calendario.
-2. La **Capa de Presentación** recibe la solicitud y pasa el identificador a la lógica.
-3. La **Capa de Negocio** verifica que el torneo exista en la base de datos.
-4. La **Capa de Persistencia** recupera todos los partidos programados agrupados por Jornada/Fecha o por Fase de Eliminación.
-5. El Sistema devuelve un código **200 OK** con los resultados pasados, horarios futuros, lugares y estado actual de los encuentros.
+2. La **Capa de Presentación** (`TorneosController.GetFixture`) recibe la solicitud y transfiere el identificador del torneo.
+3. La **Capa de Negocio** (`FixtureService.GetFixtureAsync`) verifica que el torneo exista en la base de datos (lanza `NotFoundException` 404 si no existe).
+4. La **Capa de Persistencia** recupera todos los partidos programados agrupados cronológicamente por Jornada/Fecha o por Fase de Eliminación.
+5. El Sistema devuelve un código **200 OK** con la lista de `PartidoResponseDTO` conteniendo resultados pasados, horarios futuros, canchas y estado actual de los encuentros.
 
 ### 4. FLUJOS ALTERNATIVOS (Caminos Tristes / Excepciones)
 

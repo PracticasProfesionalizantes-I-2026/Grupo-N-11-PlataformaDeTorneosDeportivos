@@ -36,11 +36,16 @@ Permite al Veedor/Árbitro visualizar desde su dispositivo móvil o web la lista
 
 * **3a. Acceso no autorizado (HTTP 403 Forbidden):**
   1. Si en el Paso 3 el Veedor intenta consultar los partidos de otro Veedor sin tener permisos administrativos.
-  2. La **Capa de Negocio** bloquea el acceso.
+  2. La **Capa de Negocio** bloquea el acceso lanzando `ForbiddenException`.
   3. El Sistema devuelve un código **403 Forbidden**. Fin del caso de uso.
 
+* **3b. Veedor Inexistente (HTTP 404 Not Found):**
+  1. Si en el Paso 3 el ID del veedor consultado no corresponde a ningún usuario registrado en la base de datos.
+  2. La **Capa de Negocio** lanza `NotFoundException`.
+  3. El Sistema devuelve un código **404 Not Found**. Fin del caso de uso.
+
 ### 5. SUB-VARIACIONES
-- El usuario puede filtrar la vista de partidos enviando query params en la solicitud (ej. `?fecha=2026-10-10` o `?torneoId=5`).
+- El usuario puede filtrar la vista de partidos enviando query params en la solicitud (ej. `?fecha=2026-10-10` o `?torneoId=...`).
 
 ### 6. POSTCONDICIONES
 - Ninguna alteración de estado. El Veedor accede a la información de solo lectura relevante para su labor.
@@ -55,6 +60,7 @@ Permite al Veedor/Árbitro visualizar desde su dispositivo móvil o web la lista
 | --- | --- | --- |
 | `200` | OK | Retorno exitoso de la lista de partidos asignados (incluso si está vacía). |
 | `403` | Forbidden | Intento de un Veedor de acceder a las asignaciones de otro usuario sin permisos. |
+| `404` | Not Found | Veedor inexistente en la base de datos. |
 
 ### Matriz de trazabilidad CU-09 → Test
 
@@ -63,3 +69,4 @@ Permite al Veedor/Árbitro visualizar desde su dispositivo móvil o web la lista
 | Flujo principal | `200 OK` | `GetPartidosByVeedorAsync_ReturnsListaPartidos` | `GetPartidosVeedor_Returns200OKAndList` |
 | 4a. Sin partidos | `200 OK` | `GetPartidosByVeedorAsync_WhenEmpty_ReturnsEmptyList` | `GetPartidosVeedor_WhenNoMatches_Returns200OKAndEmpty` |
 | 3a. Acceso denegado | `403 Forbidden` | `GetPartidosByVeedorAsync_WithDifferentUserId_ThrowsForbidden` | `GetPartidosVeedor_WithDifferentUserToken_Returns403Forbidden` |
+| 3b. Veedor inexistente | `404 Not Found` | `GetPartidosByVeedorAsync_WhenVeedorNotFound_ThrowsNotFound` | `GetPartidosVeedor_WithNonExistentVeedor_Returns404NotFound` |

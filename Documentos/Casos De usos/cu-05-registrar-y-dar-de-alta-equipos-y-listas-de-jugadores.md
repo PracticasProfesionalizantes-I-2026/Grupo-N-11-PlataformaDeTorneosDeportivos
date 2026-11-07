@@ -25,16 +25,22 @@ Permite a un Capitán registrar su equipo en la plataforma y cargar la lista de 
 - La Capa de Persistencia debe estar disponible para almacenar el equipo y las entidades de jugadores asociadas.
 
 ### 3. FLUJO PRINCIPAL (Camino Feliz - HTTP 201 Created)
-1. El Actor envía una petición al endpoint `POST /api/torneos/{torneoId}/equipos` con los datos del equipo (`nombre`, `logoUrl`) y la nómina de jugadores (`nombre`, `apellido`, `dni`, `documentacionUrl`).
-2. La **Capa de Presentación** (`EquiposController.CreateEquipo`) valida que el JSON sea estructuralmente correcto, que los campos requeridos estén presentes y que la lista de jugadores no venga vacía (data annotations `[Required]` sobre `EquipoCreateDTO` y `JugadorDTO`).
+1. El Actor envía una petición al endpoint `POST /api/torneos/{torneoId}/equipos` con los datos del equipo (`nombre`, `logoUrl`, `telefono`) y la nómina de jugadores (`nombre`, `apellido`, `dni`, `email`, `telefono`, `documentacionUrl`).
+2. La **Capa de Presentación** (`EquiposController.CreateEquipo`) valida que el JSON sea estructuralmente correcto, que los campos requeridos estén presentes y cumplan los formatos estipulados (data annotations `[Required]`, `[RegularExpression]` sobre `EquipoCreateDTO` y `JugadorCreateDTO`):
+   - `Nombre` del equipo: entre 2 y 100 caracteres.
+   - `Dni` de jugadores: estrictamente 7 u 8 dígitos numéricos (`^\d{7,8}$`).
+   - `Telefono` (del equipo y de los jugadores): numérico con prefijo `+` opcional, de 8 a 15 dígitos (`^\+?[0-9]{8,15}$`).
+   - `Nombre` y `Apellido` de jugadores: entre 2 y 50 caracteres alfabéticos (sin números ni símbolos especiales).
+   - Lista de jugadores no vacía.
 3. La **Capa de Negocio** (`EquipoService.CreateEquipoAsync`):
    - Normaliza cadenas mediante `Trim()`.
    - Verifica que el torneo exista y esté en estado "Abierto para Inscripción".
+   - Verifica que el torneo no haya cubierto la totalidad de sus plazas (`confirmados < torneo.CupoMaximo`).
    - Verifica que el nombre del equipo no se encuentre duplicado en el mismo torneo.
    - Comprueba que la cantidad de jugadores cumpla con el mínimo reglamentario para la disciplina deportiva asociada al torneo.
    - Valida que no existan números de DNI duplicados dentro de la misma nómina de entrada.
    - Verifica que ninguno de los jugadores (por DNI) se encuentre ya inscripto en otro equipo del mismo torneo, aplicando la regla de negocio **RN-02**.
-   - Asigna al equipo el estado "Pendiente de Validación" y bloquea la posibilidad de edición directa por parte del Capitán, aplicando la regla de negocio **RN-03**.
+   - Asigna al equipo el estado "Pendiente de Validación" y bloquea la posibilidad de edición directa por parte del Capitán (`EdicionListaHabilitada = false`), aplicando la regla de negocio **RN-03**.
 4. La **Capa de Persistencia** genera el ID único para el equipo y persiste de forma transaccional el registro en la tabla `Equipos` y cada uno de los integrantes en la tabla `Jugadores`.
 5. El Sistema devuelve un código **201 Created** con la cabecera `Location` y la información del equipo registrado (ID, nombre, estado "Pendiente de Validación" y cantidad de jugadores).
 
@@ -43,12 +49,12 @@ Permite a un Capitán registrar su equipo en la plataforma y cargar la lista de 
 * **1a. JSON inválido o malformado (HTTP 400 Bad Request):**
   1. Si en el Paso 1 el cuerpo de la petición no es un JSON válido o contiene tipos de datos incongruentes.
   2. El Sistema (Capa de Presentación / model binding) rechaza la petición.
-  3. El Sistema devuelve un código **400 Bad Request**. Fin del caso de uso.
+  3. El Sistema devuelve un código **400 Bad Request** con el formato unificado `{ "error": "mensaje descriptivo" }`. Fin del caso de uso.
 
-* **2a. Datos obligatorios faltantes en equipo o jugadores (HTTP 400 Bad Request):**
-  1. Si en el Paso 2 falta el nombre del equipo o datos identificatorios obligatorios de algún jugador (`nombre`, `apellido`, `dni`).
-  2. El Sistema (Capa de Presentación) rechaza la petición por validación de modelo (`ModelState.IsValid == false`).
-  3. El Sistema devuelve un código **400 Bad Request** con el detalle del campo faltante. Fin del caso de uso.
+* **2a. Datos obligatorios faltantes o con formato inválido (HTTP 400 Bad Request):**
+  1. Si en el Paso 2 falta el nombre del equipo, o los jugadores contienen DNI fuera de rango (menos de 7 o más de 8 dígitos, o letras), teléfonos con letras, o nombres con caracteres numéricos.
+  2. El Sistema (Capa de Presentación / DataAnnotations o Capa de Negocio) rechaza la petición lanzando `ValidationException`.
+  3. El Sistema devuelve un código **400 Bad Request** detallando el error. Fin del caso de uso.
 
 * **3a. Torneo inexistente (HTTP 404 Not Found):**
   1. Si en el Paso 3 el `{torneoId}` no corresponde a un torneo registrado en la base de datos.
@@ -125,11 +131,14 @@ Permite a un Capitán registrar su equipo en la plataforma y cargar la lista de 
 | Flujo principal | `201 Created` | `CreateEquipoAsync_WithValidData_ReturnsCreatedEquipoDTO` | `CreateEquipo_WithValidPayload_Returns201Created` |
 | 1a. JSON inválido | `400 Bad Request` | — (model binding de ASP.NET Core) | `CreateEquipo_WithMalformedJson_Returns400BadRequest` |
 | 2a. Datos obligatorios faltantes | `400 Bad Request` | — (detectado por `[Required]` en Presentación) | `CreateEquipo_WithMissingRequiredFields_Returns400BadRequest` |
-| 3a. Torneo inexistente | `404 Not Found` | `CreateEquipoAsync_WhenTorneoDoesNotExist_ThrowsTorneoNotFoundException` | `CreateEquipo_WhenTorneoNotFound_Returns404NotFound` |
+| 2a. DNI con formato inválido | `400 Bad Request` | `CreateEquipoAsync_WhenPlayerDniContainsLetters_ThrowsValidationException`<br>`CasoD_JugadorService_NombreConNumeros_ODniFueraDeRango_LanzaValidationException` | `CasoD_Integration_RegistrarJugadorYUsuario_NombreConNumerosODniFueraDeRango_Retorna400BadRequest`<br>`Vector2_AtaquesAlDni_Retorna400BadRequest` |
+| 2a. Teléfono inválido | `400 Bad Request` | `CasoC_JugadorService_TelefonoInvalido_LanzaValidationException` | `CasoC_Integration_RegistrarJugadorYUsuario_TelefonoTextoInvalidoAbc_Retorna400BadRequest`<br>`Fuzz_TelefonoConLetrasOSimbolos_Retorna400BadRequest` |
+| 2a. Nombre con números | `400 Bad Request` | `CasoD_JugadorService_NombreConNumeros_ODniFueraDeRango_LanzaValidationException` | `CasoD_Integration_RegistrarJugadorYUsuario_NombreConNumerosODniFueraDeRango_Retorna400BadRequest`<br>`Fuzz_NombreYApellidoConNumerosOSimbolos_Retorna400BadRequest` |
+| 3a. Torneo inexistente | `404 Not Found` | `CreateEquipoAsync_WhenTorneoDoesNotExist_ThrowsTorneoNotFoundException` | `CreateEquipo_WhenTorneoNotFound_Returns404NotFound`<br>`CU05_CreateEquipo_TorneoInexistente_Retorna404NotFound` |
 | 3b. Torneo cerrado a inscripciones | `409 Conflict` | `CreateEquipoAsync_WhenTorneoNotOpen_ThrowsTorneoInscripcionCerradaException` | `CreateEquipo_WhenTorneoClosed_Returns409Conflict` |
-| 3c. Menos jugadores del mínimo | `422 Unprocessable Entity` | `CreateEquipoAsync_WhenPlayersBelowMinimum_ThrowsMinimoJugadoresInsuficienteException` | `CreateEquipo_WhenPlayersBelowMinimum_Returns422UnprocessableEntity` |
-| 3d. DNI duplicado en misma lista | `400 Bad Request` | `CreateEquipoAsync_WhenDuplicateDniInList_ThrowsValidationException` | `CreateEquipo_WhenDuplicateDniInList_Returns400BadRequest` |
-| 3e. Jugador ya inscripto en torneo (RN-02) | `409 Conflict` | `CreateEquipoAsync_WhenPlayerAlreadyInOtherTeam_ThrowsJugadorYaInscriptoException` | `CreateEquipo_WhenPlayerAlreadyRegisteredInTournament_Returns409Conflict` |
+| 3c. Menos jugadores del mínimo | `422 Unprocessable Entity` | `CreateEquipoAsync_WhenPlayersBelowMinimum_ThrowsMinimoJugadoresInsuficienteException` | `CreateEquipo_WhenPlayersBelowMinimum_Returns422UnprocessableEntity`<br>`CU05_CreateEquipo_MenosJugadoresDelMinimoReglamentario_Retorna422UnprocessableEntity` |
+| 3d. DNI duplicado en misma lista | `400 Bad Request` | `CreateEquipoAsync_WhenDuplicateDniInList_ThrowsValidationException` | `CreateEquipo_WhenDuplicateDniInList_Returns400BadRequest`<br>`CU05_CreateEquipo_DnisDuplicadosEnMismaLista_Retorna400BadRequest` |
+| 3e. Jugador ya inscripto en torneo (RN-02) | `409 Conflict` | `CreateEquipoAsync_WhenPlayerAlreadyInOtherTeam_ThrowsJugadorYaInscriptoException`<br>`CreateAsync_JugadorDuplicadoEnMismoTorneo_ThrowsBusinessRuleConflictException` | `CreateEquipo_WhenPlayerAlreadyRegisteredInTournament_Returns409Conflict`<br>`CU05_CreateEquipo_JugadorEnDosEquiposDelMismoTorneo_Retorna409Conflict_RN02` |
 | 3f. Nombre de equipo duplicado | `409 Conflict` | `CreateEquipoAsync_WhenTeamNameExistsInTournament_ThrowsEquipoNombreDuplicadoException` | `CreateEquipo_WhenDuplicateTeamName_Returns409Conflict` |
 | 3g. Torneo con cupo lleno | `409 Conflict` | `CreateEquipoAsync_WhenTournamentFull_ThrowsTorneoCupoLlenoException` | `CreateEquipo_WhenTournamentFull_Returns409Conflict` |
 
