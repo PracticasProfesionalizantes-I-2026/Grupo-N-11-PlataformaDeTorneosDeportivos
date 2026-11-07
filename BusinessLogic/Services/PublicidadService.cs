@@ -24,6 +24,11 @@ namespace BusinessLogic.Services
 
         public async Task<IEnumerable<PublicidadResponseDTO>> GetPublicidadByTorneoAsync(Guid torneoId)
         {
+            if (torneoId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+            }
+
             var banners = (await _publicidadRepository.GetByTorneoIdAsync(torneoId)).ToList();
 
             if (banners.Count == 0)
@@ -45,6 +50,11 @@ namespace BusinessLogic.Services
 
         public async Task<PublicidadClickResponseDTO> RegisterClickAsync(Guid bannerId)
         {
+            if (bannerId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del banner publicitario no puede ser vacío.");
+            }
+
             var banner = await _publicidadRepository.GetByIdAsync(bannerId);
             if (banner == null)
             {
@@ -69,15 +79,53 @@ namespace BusinessLogic.Services
                 throw new ValidationException("Los datos de la publicidad son obligatorios.");
             }
 
+            if (dto.TorneoId.HasValue && dto.TorneoId.Value == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+            }
+
+            var tituloTrim = dto.Titulo?.Trim() ?? string.Empty;
+            var patrocinadorTrim = dto.NombrePatrocinador?.Trim() ?? string.Empty;
+            var imagenUrlTrim = dto.ImagenUrl?.Trim() ?? string.Empty;
+            var urlDestinoTrim = dto.UrlDestino?.Trim() ?? string.Empty;
+            var ubicacionTrim = dto.Ubicacion?.Trim() ?? "Principal";
+
+            if (string.IsNullOrWhiteSpace(tituloTrim) || tituloTrim.Length < 3 || tituloTrim.Length > 100 || tituloTrim.Contains('<') || tituloTrim.Contains('>'))
+            {
+                throw new ValidationException("El título del banner debe tener entre 3 y 100 caracteres.");
+            }
+
+            if (string.IsNullOrWhiteSpace(patrocinadorTrim) || patrocinadorTrim.Length < 2 || patrocinadorTrim.Length > 100 || patrocinadorTrim.Contains('<') || patrocinadorTrim.Contains('>'))
+            {
+                throw new ValidationException("El nombre del patrocinador debe tener entre 2 y 100 caracteres.");
+            }
+
+            if (string.IsNullOrWhiteSpace(imagenUrlTrim) || imagenUrlTrim.Length > 500 || imagenUrlTrim.Contains('<') || imagenUrlTrim.Contains('>') ||
+                !Uri.TryCreate(imagenUrlTrim, UriKind.Absolute, out var imgUri) || (imgUri.Scheme != Uri.UriSchemeHttp && imgUri.Scheme != Uri.UriSchemeHttps))
+            {
+                throw new ValidationException("La URL de la imagen es obligatoria, debe tener formato válido (http/https) y no puede superar los 500 caracteres.");
+            }
+
+            if (string.IsNullOrWhiteSpace(urlDestinoTrim) || urlDestinoTrim.Length > 500 || urlDestinoTrim.Contains('<') || urlDestinoTrim.Contains('>') ||
+                !Uri.TryCreate(urlDestinoTrim, UriKind.Absolute, out var destUri) || (destUri.Scheme != Uri.UriSchemeHttp && destUri.Scheme != Uri.UriSchemeHttps))
+            {
+                throw new ValidationException("La URL de destino es obligatoria, debe tener formato válido (http/https) y no puede superar los 500 caracteres.");
+            }
+
+            if (string.IsNullOrWhiteSpace(ubicacionTrim) || ubicacionTrim.Length < 2 || ubicacionTrim.Length > 50 || ubicacionTrim.Contains('<') || ubicacionTrim.Contains('>'))
+            {
+                throw new ValidationException("La ubicación del banner debe tener entre 2 y 50 caracteres válidos.");
+            }
+
             var entity = new Publicidad
             {
                 Id = Guid.NewGuid(),
                 TorneoId = dto.TorneoId,
-                Titulo = dto.Titulo,
-                NombrePatrocinador = dto.NombrePatrocinador,
-                ImagenUrl = dto.ImagenUrl,
-                UrlDestino = dto.UrlDestino,
-                Ubicacion = dto.Ubicacion,
+                Titulo = tituloTrim,
+                NombrePatrocinador = patrocinadorTrim,
+                ImagenUrl = imagenUrlTrim,
+                UrlDestino = urlDestinoTrim,
+                Ubicacion = ubicacionTrim,
                 Activo = dto.Activo,
                 Impresiones = 0,
                 Clicks = 0,

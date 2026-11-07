@@ -1,5 +1,7 @@
+using System.Linq;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -21,7 +23,20 @@ namespace API
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                .ConfigureApiBehaviorOptions(options =>
+                {
+                    options.InvalidModelStateResponseFactory = context =>
+                    {
+                        var firstError = context.ModelState.Values
+                            .SelectMany(v => v.Errors)
+                            .Select(e => !string.IsNullOrWhiteSpace(e.ErrorMessage) ? e.ErrorMessage : e.Exception?.Message)
+                            .FirstOrDefault(msg => !string.IsNullOrWhiteSpace(msg))
+                            ?? "Los datos enviados en la petición son inválidos o tienen un formato incorrecto.";
+
+                        return new BadRequestObjectResult(new { error = firstError });
+                    };
+                });
 
             // Authentication & Authorization
             var secretKey = builder.Configuration["Jwt:SecretKey"] ?? "ClaveSecretaSuperSeguraParaTorneosDeportivos2026";

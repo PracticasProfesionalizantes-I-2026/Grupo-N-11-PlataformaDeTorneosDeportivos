@@ -18,21 +18,21 @@ namespace API.Controllers
             _equipoService = equipoService;
         }
 
-        [HttpGet("torneos/{torneoId:guid}/equipos")]
+        [HttpGet("torneos/{torneoId}/equipos")]
         public async Task<IActionResult> GetByTorneoId(Guid torneoId)
         {
             var equipos = await _equipoService.GetByTorneoIdAsync(torneoId);
             return Ok(equipos);
         }
 
-        [HttpGet("equipos/{id:guid}")]
+        [HttpGet("equipos/{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var equipo = await _equipoService.GetByIdAsync(id);
             return Ok(equipo);
         }
 
-        [HttpPost("torneos/{torneoId:guid}/equipos")]
+        [HttpPost("torneos/{torneoId}/equipos")]
         [Authorize(Roles = "Capitan,Administrador")]
         public async Task<IActionResult> CreateEquipo(Guid torneoId, [FromBody] EquipoCreateDTO dto)
         {
@@ -41,7 +41,7 @@ namespace API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = equipo.Id }, equipo);
         }
 
-        [HttpPut("equipos/{id:guid}/estado")]
+        [HttpPut("equipos/{id}/estado")]
         [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> CambiarEstado(Guid id, [FromBody] string estado)
         {
@@ -49,7 +49,7 @@ namespace API.Controllers
             return Ok(equipo);
         }
 
-        [HttpGet("equipos/{id:guid}/estadisticas")]
+        [HttpGet("equipos/{id}/estadisticas")]
         public async Task<IActionResult> GetEstadisticas(Guid id)
         {
             var estadisticas = await _equipoService.GetEstadisticasAsync(id);

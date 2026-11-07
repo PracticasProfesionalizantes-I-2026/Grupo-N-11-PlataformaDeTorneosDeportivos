@@ -18,14 +18,14 @@ namespace API.Controllers
             _jugadorService = jugadorService;
         }
 
-        [HttpGet("equipos/{equipoId:guid}/jugadores")]
+        [HttpGet("equipos/{equipoId}/jugadores")]
         public async Task<IActionResult> GetByEquipoId(Guid equipoId)
         {
             var jugadores = await _jugadorService.GetByEquipoIdAsync(equipoId);
             return Ok(jugadores);
         }
 
-        [HttpPost("equipos/{equipoId:guid}/jugadores")]
+        [HttpPost("equipos/{equipoId}/jugadores")]
         [Authorize(Roles = "Capitan,Administrador")]
         public async Task<IActionResult> Create(Guid equipoId, [FromBody] JugadorCreateDTO dto)
         {
@@ -34,7 +34,7 @@ namespace API.Controllers
             return Ok(jugador);
         }
 
-        [HttpDelete("jugadores/{id:guid}")]
+        [HttpDelete("jugadores/{id}")]
         [Authorize(Roles = "Capitan,Administrador")]
         public async Task<IActionResult> Delete(Guid id)
         {
@@ -42,7 +42,7 @@ namespace API.Controllers
             return NoContent();
         }
 
-        [HttpGet("jugadores/{id:guid}/estadisticas")]
+        [HttpGet("jugadores/{id}/estadisticas")]
         public async Task<IActionResult> GetEstadisticas(Guid id)
         {
             var estadisticas = await _jugadorService.GetEstadisticasAsync(id);

@@ -19,6 +19,11 @@ namespace BusinessLogic.Services
 
         public async Task<PartidoResultadoResponseDTO> LoadResultadoAsync(Guid id, CargarResultadoDTO dto)
         {
+            if (id == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del partido no puede ser vacío.");
+            }
+
             if (dto == null)
             {
                 throw new ValidationException("Los datos del resultado son obligatorios.");
@@ -37,13 +42,29 @@ namespace BusinessLogic.Services
                 throw new ValidationException("Los marcadores deben ser valores numéricos no negativos.");
             }
 
+            if (marcadorLocal.Value > 999 || marcadorVisitante.Value > 999)
+            {
+                throw new ValidationException("Los marcadores deben estar entre 0 y 999.");
+            }
+
             var penalesLocal = dto.ObtenerPenalesLocal();
             var penalesVisitante = dto.ObtenerPenalesVisitante();
+
+            if (penalesLocal.HasValue != penalesVisitante.HasValue)
+            {
+                throw new ValidationException("Si se informan penales, deben especificarse para ambos equipos.");
+            }
 
             if ((penalesLocal.HasValue && penalesLocal.Value < 0) || 
                 (penalesVisitante.HasValue && penalesVisitante.Value < 0))
             {
                 throw new ValidationException("Los penales deben ser valores no negativos.");
+            }
+
+            if ((penalesLocal.HasValue && penalesLocal.Value > 999) || 
+                (penalesVisitante.HasValue && penalesVisitante.Value > 999))
+            {
+                throw new ValidationException("Los penales deben estar entre 0 y 999.");
             }
 
             var partido = await _partidoRepository.GetByIdWithTorneoAndEquiposAsync(id);

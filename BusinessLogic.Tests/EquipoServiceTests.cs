@@ -107,7 +107,7 @@ namespace BusinessLogic.Tests
                 TorneoId = torneoId,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "A", Apellido = "B", Dni = "12345678" }
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = "12345678" }
                 }
             };
 
@@ -141,7 +141,7 @@ namespace BusinessLogic.Tests
                 TorneoId = torneoId,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "A", Apellido = "B", Dni = "12345678" }
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = "12345678" }
                 }
             };
 

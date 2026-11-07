@@ -30,9 +30,53 @@ namespace BusinessLogic.Services
 
         public async Task<IncidenciaResponseDTO> RegistrarIncidenciaAsync(Guid partidoId, IncidenciaCreateDTO dto)
         {
+            if (partidoId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del partido no puede ser vacío.");
+            }
+
             if (dto == null)
             {
                 throw new ValidationException("Los datos de la incidencia son obligatorios.");
+            }
+
+            if (dto.Tipo.HasValue)
+            {
+                if (!Enum.IsDefined(typeof(TipoIncidencia), dto.Tipo.Value))
+                {
+                    throw new ValidationException("El tipo de incidencia especificado no es válido.");
+                }
+                dto.TipoIncidencia = dto.Tipo.Value;
+            }
+
+            if (!Enum.IsDefined(typeof(TipoIncidencia), dto.TipoIncidencia))
+            {
+                throw new ValidationException("El tipo de incidencia especificado no es válido.");
+            }
+
+            if (dto.Minuto < 1 || dto.Minuto > 150)
+            {
+                throw new ValidationException("El minuto de la incidencia debe estar entre 1 y 150.");
+            }
+
+            if (dto.JugadorId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del jugador no puede ser vacío.");
+            }
+
+            if (dto.EquipoId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del equipo no puede ser vacío.");
+            }
+
+            var rawObservaciones = dto.Observaciones ?? dto.Observacion ?? dto.Descripcion;
+            if (rawObservaciones != null)
+            {
+                var obsTrim = rawObservaciones.Trim();
+                if (string.IsNullOrWhiteSpace(obsTrim) || obsTrim.Length > 300 || obsTrim.Contains('<') || obsTrim.Contains('>'))
+                {
+                    throw new ValidationException("Las observaciones/descripción no pueden estar vacías, superar los 300 caracteres ni contener etiquetas HTML.");
+                }
             }
 
             // 3a. Verificar existencia del partido
@@ -122,7 +166,7 @@ namespace BusinessLogic.Services
                 JugadorId = dto.JugadorId,
                 TipoIncidencia = dto.TipoIncidencia,
                 Minuto = dto.Minuto,
-                Observaciones = dto.Observaciones?.Trim(),
+                Observaciones = rawObservaciones?.Trim(),
                 FechaRegistro = DateTime.UtcNow
             };
 

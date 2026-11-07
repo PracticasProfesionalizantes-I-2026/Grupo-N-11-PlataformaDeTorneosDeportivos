@@ -76,6 +76,7 @@ namespace BusinessLogic.Tests
                 Disciplina = Disciplina.ESports,
                 Modalidad = Modalidad.EliminacionDirecta,
                 CupoMaximo = 8,
+                EsPago = true,
                 CostoInscripcion = 1000
             };
 

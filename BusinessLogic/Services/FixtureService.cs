@@ -23,6 +23,22 @@ namespace BusinessLogic.Services
 
         public async Task<GenerarFixtureResponseDTO> GenerarFixtureAsync(Guid torneoId, GenerarFixtureRequestDTO dto)
         {
+            if (torneoId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+            }
+
+            if (dto == null)
+            {
+                throw new ValidationException("Los parámetros para generar el fixture son obligatorios.");
+            }
+
+            var validationErrors = dto.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(dto)).ToList();
+            if (validationErrors.Count > 0)
+            {
+                throw new ValidationException(validationErrors[0].ErrorMessage ?? "Parámetros de fixture inválidos.");
+            }
+
             var torneo = await _torneoRepository.GetTorneoConEquiposAsync(torneoId);
             if (torneo == null)
             {
@@ -47,7 +63,7 @@ namespace BusinessLogic.Services
             }
 
             // Validar cupo mínimo de equipos confirmados (Flujo 3a)
-            var equiposConfirmados = torneo.Equipos
+            var equiposConfirmados = (torneo.Equipos ?? new List<Equipo>())
                 .Where(e => e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado)
                 .ToList();
 
@@ -56,14 +72,17 @@ namespace BusinessLogic.Services
                 throw new TorneoCupoMinimoNoAlcanzadoException("No se puede generar el fixture. No se alcanza el mínimo de equipos requeridos.");
             }
 
-            // Obtener listas de horarios y sedes
-            var horarios = (dto.Horarios != null && dto.Horarios.Count > 0)
+            // Obtener listas de horarios y sedes normalizadas
+            var rawHorarios = (dto.Horarios != null && dto.Horarios.Count > 0)
                 ? dto.Horarios
                 : (dto.FranjasHorarias != null && dto.FranjasHorarias.Count > 0 ? dto.FranjasHorarias : new List<string> { "10:00" });
 
-            var sedes = (dto.Sedes != null && dto.Sedes.Count > 0)
+            var rawSedes = (dto.Sedes != null && dto.Sedes.Count > 0)
                 ? dto.Sedes
                 : (dto.CanchasDisponibles != null && dto.CanchasDisponibles.Count > 0 ? dto.CanchasDisponibles : new List<string> { "Cancha 1" });
+
+            var horarios = rawHorarios.Select(h => h.Trim()).ToList();
+            var sedes = rawSedes.Select(s => s.Trim()).ToList();
 
             var fechaBase = dto.FechaInicio ?? DateTime.Today.AddDays(1);
             var partidosGenerados = new List<Partido>();
@@ -162,6 +181,22 @@ namespace BusinessLogic.Services
 
         public async Task<FixtureResponseDTO> GenerarFixtureAsync(Guid torneoId, FixtureParametrosDTO dto)
         {
+            if (torneoId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+            }
+
+            if (dto == null)
+            {
+                throw new ValidationException("Los parámetros para generar el fixture son obligatorios.");
+            }
+
+            var validationErrors = dto.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(dto)).ToList();
+            if (validationErrors.Count > 0)
+            {
+                throw new ValidationException(validationErrors[0].ErrorMessage ?? "Parámetros de fixture inválidos.");
+            }
+
             var torneo = await _torneoRepository.GetTorneoConEquiposAsync(torneoId) ?? await _torneoRepository.GetByIdAsync(torneoId);
 
             if (torneo == null)
@@ -190,8 +225,8 @@ namespace BusinessLogic.Services
                 throw new EquiposInsuficientesException("Se requieren al menos 4 equipos confirmados para generar el fixture");
             }
 
-            var canchas = dto.CanchasDisponibles ?? new List<string>();
-            var franjas = dto.FranjasHorarias ?? new List<string>();
+            var canchas = (dto.CanchasDisponibles ?? new List<string>()).Select(c => c.Trim()).ToList();
+            var franjas = (dto.FranjasHorarias ?? new List<string>()).Select(f => f.Trim()).ToList();
             int capacidadPorDia = canchas.Count * franjas.Count;
 
             if (capacidadPorDia <= 0)
@@ -350,6 +385,11 @@ namespace BusinessLogic.Services
 
         public async Task<IEnumerable<PartidoResponseDTO>> GetFixtureAsync(Guid torneoId)
         {
+            if (torneoId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+            }
+
             var torneo = await _torneoRepository.GetByIdAsync(torneoId);
             if (torneo == null)
             {
@@ -419,11 +459,17 @@ namespace BusinessLogic.Services
 
         private static DateTime CombinarFechaYHora(DateTime fecha, string horarioStr, int offsetIndice)
         {
-            if (TimeSpan.TryParse(horarioStr, out var ts))
+            var cleanHorario = horarioStr?.Trim() ?? string.Empty;
+            if (cleanHorario.Contains('-'))
+            {
+                cleanHorario = cleanHorario.Split('-')[0].Trim();
+            }
+
+            if (TimeSpan.TryParse(cleanHorario, out var ts) && ts >= TimeSpan.Zero && ts < TimeSpan.FromHours(24))
             {
                 return fecha.Date.Add(ts);
             }
-            return fecha.Date.AddHours(9).AddMinutes(offsetIndice * 60);
+            return fecha.Date.AddHours(9).AddMinutes((offsetIndice % 12) * 60);
         }
     }
 }

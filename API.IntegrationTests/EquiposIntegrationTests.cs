@@ -56,11 +56,11 @@ namespace API.IntegrationTests
                 TorneoId = torneo.Id,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "Juan", Apellido = "Perez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Diego", Apellido = "Romero", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) }
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Diego", Apellido = "Romero", Dni = $"{Random.Shared.Next(10000000, 99999999)}" }
                 }
             };
 
@@ -122,7 +122,7 @@ namespace API.IntegrationTests
                 TorneoId = nonExistentTorneoId,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "A", Apellido = "B", Dni = "12345678" }
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = "12345678" }
                 }
             };
 
@@ -221,11 +221,11 @@ namespace API.IntegrationTests
                 TorneoId = torneo.Id,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "A", Apellido = "Uno", Dni = dniCompartido },
-                    new() { Nombre = "B", Apellido = "Dos", Dni = "10000001" },
-                    new() { Nombre = "C", Apellido = "Tres", Dni = "10000002" },
-                    new() { Nombre = "D", Apellido = "Cuatro", Dni = "10000003" },
-                    new() { Nombre = "E", Apellido = "Cinco", Dni = "10000004" }
+                    new() { Nombre = "Juan", Apellido = "Uno", Dni = dniCompartido },
+                    new() { Nombre = "Carlos", Apellido = "Dos", Dni = "10000001" },
+                    new() { Nombre = "Lucas", Apellido = "Tres", Dni = "10000002" },
+                    new() { Nombre = "Marcos", Apellido = "Cuatro", Dni = "10000003" },
+                    new() { Nombre = "Diego", Apellido = "Cinco", Dni = "10000004" }
                 }
             };
 
@@ -239,11 +239,11 @@ namespace API.IntegrationTests
                 TorneoId = torneo.Id,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "A_Copia", Apellido = "Uno_Copia", Dni = dniCompartido }, // Violación RN-02
-                    new() { Nombre = "F", Apellido = "Seis", Dni = "20000001" },
-                    new() { Nombre = "G", Apellido = "Siete", Dni = "20000002" },
-                    new() { Nombre = "H", Apellido = "Ocho", Dni = "20000003" },
-                    new() { Nombre = "I", Apellido = "Nueve", Dni = "20000004" }
+                    new() { Nombre = "JuanCopia", Apellido = "UnoCopia", Dni = dniCompartido }, // Violación RN-02
+                    new() { Nombre = "Pedro", Apellido = "Seis", Dni = "20000001" },
+                    new() { Nombre = "Pablo", Apellido = "Siete", Dni = "20000002" },
+                    new() { Nombre = "Mateo", Apellido = "Ocho", Dni = "20000003" },
+                    new() { Nombre = "Tomas", Apellido = "Nueve", Dni = "20000004" }
                 }
             };
 
@@ -266,11 +266,11 @@ namespace API.IntegrationTests
                 TorneoId = torneo.Id,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "A", Apellido = "Uno", Dni = "30000001" },
-                    new() { Nombre = "B", Apellido = "Dos", Dni = "30000002" },
-                    new() { Nombre = "C", Apellido = "Tres", Dni = "30000003" },
-                    new() { Nombre = "D", Apellido = "Cuatro", Dni = "30000004" },
-                    new() { Nombre = "E", Apellido = "Cinco", Dni = "30000005" }
+                    new() { Nombre = "Juan", Apellido = "Uno", Dni = "30000001" },
+                    new() { Nombre = "Carlos", Apellido = "Dos", Dni = "30000002" },
+                    new() { Nombre = "Lucas", Apellido = "Tres", Dni = "30000003" },
+                    new() { Nombre = "Marcos", Apellido = "Cuatro", Dni = "30000004" },
+                    new() { Nombre = "Diego", Apellido = "Cinco", Dni = "30000005" }
                 }
             };
 
@@ -284,11 +284,11 @@ namespace API.IntegrationTests
                 TorneoId = torneo.Id,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "F", Apellido = "Seis", Dni = "40000001" },
-                    new() { Nombre = "G", Apellido = "Siete", Dni = "40000002" },
-                    new() { Nombre = "H", Apellido = "Ocho", Dni = "40000003" },
-                    new() { Nombre = "I", Apellido = "Nueve", Dni = "40000004" },
-                    new() { Nombre = "J", Apellido = "Diez", Dni = "40000005" }
+                    new() { Nombre = "Pedro", Apellido = "Seis", Dni = "40000001" },
+                    new() { Nombre = "Pablo", Apellido = "Siete", Dni = "40000002" },
+                    new() { Nombre = "Mateo", Apellido = "Ocho", Dni = "40000003" },
+                    new() { Nombre = "Tomas", Apellido = "Nueve", Dni = "40000004" },
+                    new() { Nombre = "Nicolas", Apellido = "Diez", Dni = "40000005" }
                 }
             };
 
@@ -324,11 +324,11 @@ namespace API.IntegrationTests
                 TorneoId = torneo.Id,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "Juan", Apellido = "Perez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Diego", Apellido = "Romero", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) }
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Diego", Apellido = "Romero", Dni = $"{Random.Shared.Next(10000000, 99999999)}" }
                 }
             };
 
@@ -361,7 +361,7 @@ namespace API.IntegrationTests
                 Id = Guid.NewGuid(),
                 Nombre = "Enzo",
                 Apellido = "Fernandez",
-                Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8),
+                Dni = $"{Random.Shared.Next(10000000, 99999999)}",
                 EquipoId = equipo.Id
             };
             db.Jugadores.Add(jugador);
@@ -463,11 +463,11 @@ namespace API.IntegrationTests
                 TorneoId = torneo.Id,
                 Jugadores = new List<JugadorCreateDTO>
                 {
-                    new() { Nombre = "Juan", Apellido = "Perez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) },
-                    new() { Nombre = "Diego", Apellido = "Romero", Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8) }
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Carlos", Apellido = "Lopez", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Lucas", Apellido = "Gomez", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Marcos", Apellido = "Diaz", Dni = $"{Random.Shared.Next(10000000, 99999999)}" },
+                    new() { Nombre = "Diego", Apellido = "Romero", Dni = $"{Random.Shared.Next(10000000, 99999999)}" }
                 }
             };
 

@@ -56,7 +56,7 @@ namespace API.IntegrationTests
                 Id = Guid.NewGuid(),
                 Nombre = "Mauro",
                 Apellido = "Zarate",
-                Dni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8),
+                Dni = $"{Random.Shared.Next(10000000, 99999999)}",
                 EquipoId = equipo.Id
             };
             db.Jugadores.Add(jugador);

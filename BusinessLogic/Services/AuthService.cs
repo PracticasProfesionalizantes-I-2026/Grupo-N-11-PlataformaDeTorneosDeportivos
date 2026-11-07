@@ -31,8 +31,35 @@ namespace BusinessLogic.Services
 
         public async Task<LoginResponseDTO> LoginAsync(LoginRequestDTO dto)
         {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.EmailOrDni) || string.IsNullOrWhiteSpace(dto.Password))
+            {
+                throw new ValidationException("El correo/DNI y la contraseña son obligatorios.");
+            }
+
+            var credential = dto.EmailOrDni.Trim();
+            if (credential.Length > 150 || credential.Contains('<') || credential.Contains('>') || dto.Password.Length > 128)
+            {
+                throw new ValidationException("Las credenciales ingresadas exceden la longitud máxima permitida o contienen caracteres inválidos.");
+            }
+
+            bool isEmail = credential.Contains('@');
+            if (isEmail)
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(credential, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                {
+                    throw new ValidationException("El formato del correo electrónico ingresado no es válido.");
+                }
+            }
+            else
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(credential, @"^\d{7,8}$"))
+                {
+                    throw new ValidationException("El DNI ingresado debe contener exactamente 7 u 8 dígitos numéricos.");
+                }
+            }
+
             // Paso 3 del CU-02: Buscar usuario por Email o DNI
-            var usuario = await _usuarioRepository.GetByEmailOrDniAsync(dto.EmailOrDni);
+            var usuario = await _usuarioRepository.GetByEmailOrDniAsync(credential);
 
             // Flujo Alternativo 3a: Credenciales incorrectas si el usuario no existe
             if (usuario == null)
@@ -69,7 +96,17 @@ namespace BusinessLogic.Services
 
         public async Task<RecuperarPasswordResponseDTO> RecoverPasswordAsync(RecuperarPasswordRequestDTO dto)
         {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Email))
+            {
+                throw new ValidationException("El correo electrónico es obligatorio.");
+            }
+
             var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
+            if (normalizedEmail.Length > 150 || normalizedEmail.Contains('<') || normalizedEmail.Contains('>') ||
+                !System.Text.RegularExpressions.Regex.IsMatch(normalizedEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            {
+                throw new ValidationException("El formato del correo electrónico no es válido.");
+            }
 
             // Flujo Alternativo 3a: Silencioso si no existe (seguridad)
             var usuario = await _usuarioRepository.GetByEmailAsync(normalizedEmail);
@@ -97,7 +134,22 @@ namespace BusinessLogic.Services
 
         public async Task<ResetPasswordResponseDTO> ResetPasswordAsync(ResetPasswordRequestDTO dto)
         {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Token) || string.IsNullOrWhiteSpace(dto.NewPassword))
+            {
+                throw new ValidationException("El token y la nueva contraseña son obligatorios.");
+            }
+
+            if (dto.NewPassword.Length < 8 || dto.NewPassword.Length > 128 ||
+                !dto.NewPassword.Any(char.IsLetter) || !dto.NewPassword.Any(char.IsDigit))
+            {
+                throw new ValidationException("La nueva contraseña debe tener entre 8 y 128 caracteres e incluir letras y números.");
+            }
+
             var token = dto.Token.Trim();
+            if (token.Length > 150 || token.Contains('<') || token.Contains('>'))
+            {
+                throw new ValidationException("El formato del token de recuperación no es válido.");
+            }
 
             // Flujo Alternativo 7a: Token Expirado o Usado (HTTP 400 Bad Request)
             var usuario = await _usuarioRepository.GetByPasswordResetTokenAsync(token);

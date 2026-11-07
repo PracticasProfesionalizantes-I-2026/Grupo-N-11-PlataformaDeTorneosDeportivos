@@ -27,7 +27,7 @@ namespace API.Controllers
             return Ok(torneos);
         }
 
-        [HttpGet("{id:guid}")]
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var torneo = await _torneoService.GetByIdAsync(id);
@@ -42,7 +42,7 @@ namespace API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = torneo.Id }, torneo);
         }
 
-        [HttpPut("{id:guid}")]
+        [HttpPut("{id}")]
         [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> Update(Guid id, [FromBody] TorneoUpdateDTO dto)
         {
@@ -50,7 +50,7 @@ namespace API.Controllers
             return Ok(torneo);
         }
 
-        [HttpDelete("{id:guid}")]
+        [HttpDelete("{id}")]
         [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> Delete(Guid id)
         {

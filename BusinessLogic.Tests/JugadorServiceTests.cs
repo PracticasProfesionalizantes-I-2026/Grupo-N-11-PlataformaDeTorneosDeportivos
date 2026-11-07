@@ -47,9 +47,9 @@ namespace BusinessLogic.Tests
             var equipoDestino = new Equipo { Id = equipoDestinoId, TorneoId = torneoId };
             var equipoExistente = new Equipo { Id = equipoExistenteId, TorneoId = torneoId, Nombre = "Equipo A" };
             
-            var dto = new JugadorCreateDTO { Dni = "123456", EquipoId = equipoDestinoId };
+            var dto = new JugadorCreateDTO { Nombre = "Juan", Apellido = "Perez", Dni = "12345678", EquipoId = equipoDestinoId };
 
-            var jugadorExistente = new Jugador { Id = Guid.NewGuid(), Dni = "123456", EquipoId = equipoExistenteId };
+            var jugadorExistente = new Jugador { Id = Guid.NewGuid(), Dni = "12345678", EquipoId = equipoExistenteId };
 
             _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoDestinoId)).ReturnsAsync(equipoDestino);
             _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoExistenteId)).ReturnsAsync(equipoExistente);

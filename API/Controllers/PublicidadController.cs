@@ -18,14 +18,14 @@ namespace API.Controllers
             _publicidadService = publicidadService;
         }
 
-        [HttpGet("torneos/{id:guid}/publicidad")]
+        [HttpGet("torneos/{id}/publicidad")]
         public async Task<IActionResult> GetPublicidadByTorneo(Guid id)
         {
             var banners = await _publicidadService.GetPublicidadByTorneoAsync(id);
             return Ok(banners);
         }
 
-        [HttpPost("publicidad/{bannerId:guid}/click")]
+        [HttpPost("publicidad/{bannerId}/click")]
         public async Task<IActionResult> RegisterClick(Guid bannerId)
         {
             var response = await _publicidadService.RegisterClickAsync(bannerId);

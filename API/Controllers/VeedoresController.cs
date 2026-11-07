@@ -18,7 +18,7 @@ namespace API.Controllers
             _veedorService = veedorService;
         }
 
-        [HttpGet("{id:guid}")]
+        [HttpGet("{id}")]
         [Authorize(Roles = "Organizador,Administrador,Veedor")]
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -42,7 +42,7 @@ namespace API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
 
-        [HttpPut("{id:guid}")]
+        [HttpPut("{id}")]
         [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> UpdateVeedor(Guid id, [FromBody] VeedorUpdateDTO dto)
         {
@@ -50,7 +50,7 @@ namespace API.Controllers
             return Ok(result);
         }
 
-        [HttpDelete("{id:guid}")]
+        [HttpDelete("{id}")]
         [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> DeactivateVeedor(Guid id)
         {
@@ -58,7 +58,7 @@ namespace API.Controllers
             return NoContent();
         }
 
-        [HttpGet("{id:guid}/partidos")]
+        [HttpGet("{id}/partidos")]
         [Authorize(Roles = "Veedor,Organizador,Administrador")]
         public async Task<IActionResult> GetPartidos(
             Guid id,

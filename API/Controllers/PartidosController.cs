@@ -18,7 +18,7 @@ namespace API.Controllers
             _partidoService = partidoService;
         }
 
-        [HttpPut("{id:guid}/resultado")]
+        [HttpPut("{id}/resultado")]
         [Authorize(Roles = "Veedor,Organizador,Administrador")]
         public async Task<IActionResult> LoadResultado(Guid id, [FromBody] CargarResultadoDTO dto)
         {

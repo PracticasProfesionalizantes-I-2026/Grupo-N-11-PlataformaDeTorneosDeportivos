@@ -8,7 +8,7 @@ using Shared.DTOs;
 namespace API.Controllers
 {
     [ApiController]
-    [Route("api/partidos/{partidoId:guid}/incidencias")]
+    [Route("api/partidos/{partidoId}/incidencias")]
     public class IncidenciasController : ControllerBase
     {
         private readonly IIncidenciaService _incidenciaService;

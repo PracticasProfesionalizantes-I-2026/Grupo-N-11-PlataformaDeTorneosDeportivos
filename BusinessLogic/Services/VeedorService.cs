@@ -34,12 +34,79 @@ namespace BusinessLogic.Services
                 throw new ValidationException("Los datos del veedor son obligatorios.");
             }
 
-            var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
             var normalizedDni = dto.Dni?.Trim() ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(normalizedDni) || !normalizedDni.All(c => c >= '0' && c <= '9'))
             {
                 throw new ValidationException("El DNI debe contener solo números.");
+            }
+
+            if (normalizedDni.Length < 7 || normalizedDni.Length > 8)
+            {
+                throw new ValidationException("El DNI debe tener entre 7 y 8 dígitos numéricos.");
+            }
+
+            var nombreTrim = dto.Nombre?.Trim() ?? string.Empty;
+            var apellidoTrim = dto.Apellido?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(nombreTrim) ||
+                nombreTrim.Length < 2 ||
+                nombreTrim.Length > 60 ||
+                !System.Text.RegularExpressions.Regex.IsMatch(nombreTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
+            {
+                throw new ValidationException("El nombre del veedor debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
+            }
+
+            if (string.IsNullOrWhiteSpace(apellidoTrim) ||
+                apellidoTrim.Length < 2 ||
+                apellidoTrim.Length > 60 ||
+                !System.Text.RegularExpressions.Regex.IsMatch(apellidoTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
+            {
+                throw new ValidationException("El apellido del veedor debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
+            }
+
+            var normalizedEmail = dto.Email?.Trim().ToLowerInvariant() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedEmail) || normalizedEmail.Length > 150 ||
+                normalizedEmail.Contains('<') || normalizedEmail.Contains('>') ||
+                !System.Text.RegularExpressions.Regex.IsMatch(normalizedEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            {
+                throw new ValidationException("El formato del correo electrónico no es válido.");
+            }
+
+            if (dto.Telefono != null)
+            {
+                var telTrim = dto.Telefono.Trim();
+                if (string.IsNullOrWhiteSpace(telTrim) || !System.Text.RegularExpressions.Regex.IsMatch(telTrim, @"^\+?[0-9]{8,15}$"))
+                {
+                    throw new ValidationException("El teléfono del veedor debe contener únicamente entre 8 y 15 dígitos numéricos (opcionalmente precedidos por '+').");
+                }
+            }
+
+            if (dto.SedeAsignada != null)
+            {
+                var sedeTrim = dto.SedeAsignada.Trim();
+                if (string.IsNullOrWhiteSpace(sedeTrim) || sedeTrim.Length < 2 || sedeTrim.Length > 100 ||
+                    sedeTrim.Contains('<') || sedeTrim.Contains('>') ||
+                    !System.Text.RegularExpressions.Regex.IsMatch(sedeTrim, @"^(?=.*[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ])[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\-\.\(\)]+$"))
+                {
+                    throw new ValidationException("La sede asignada debe tener entre 2 y 100 caracteres válidos.");
+                }
+            }
+
+            if (dto.TorneosAsignados != null)
+            {
+                if (dto.TorneosAsignados.Count > 50)
+                {
+                    throw new ValidationException("La lista de torneos asignados no puede superar los 50 torneos.");
+                }
+                if (dto.TorneosAsignados.Any(t => t == Guid.Empty))
+                {
+                    throw new ValidationException("La lista de torneos asignados no puede contener identificadores vacíos.");
+                }
+                if (dto.TorneosAsignados.Distinct().Count() != dto.TorneosAsignados.Count)
+                {
+                    throw new ValidationException("La lista de torneos asignados no puede contener identificadores duplicados.");
+                }
             }
 
             // 3a. Verificar conflicto de DNI o Email existente en la plataforma
@@ -62,8 +129,8 @@ namespace BusinessLogic.Services
             var usuario = new Usuario
             {
                 Id = Guid.NewGuid(),
-                Nombre = dto.Nombre.Trim(),
-                Apellido = dto.Apellido.Trim(),
+                Nombre = nombreTrim,
+                Apellido = apellidoTrim,
                 Dni = normalizedDni,
                 Email = normalizedEmail,
                 Telefono = dto.Telefono?.Trim(),
@@ -84,9 +151,69 @@ namespace BusinessLogic.Services
 
         public async Task<VeedorResponseDTO> UpdateVeedorAsync(Guid id, VeedorUpdateDTO dto)
         {
+            if (id == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del veedor no puede ser vacío.");
+            }
+
             if (dto == null)
             {
                 throw new ValidationException("Los datos de actualización son obligatorios.");
+            }
+
+            var nombreTrim = dto.Nombre?.Trim() ?? string.Empty;
+            var apellidoTrim = dto.Apellido?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(nombreTrim) ||
+                nombreTrim.Length < 2 ||
+                nombreTrim.Length > 60 ||
+                !System.Text.RegularExpressions.Regex.IsMatch(nombreTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
+            {
+                throw new ValidationException("El nombre del veedor debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
+            }
+
+            if (string.IsNullOrWhiteSpace(apellidoTrim) ||
+                apellidoTrim.Length < 2 ||
+                apellidoTrim.Length > 60 ||
+                !System.Text.RegularExpressions.Regex.IsMatch(apellidoTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
+            {
+                throw new ValidationException("El apellido del veedor debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
+            }
+
+            if (dto.Telefono != null)
+            {
+                var telTrim = dto.Telefono.Trim();
+                if (string.IsNullOrWhiteSpace(telTrim) || !System.Text.RegularExpressions.Regex.IsMatch(telTrim, @"^\+?[0-9]{8,15}$"))
+                {
+                    throw new ValidationException("El teléfono del veedor debe contener únicamente entre 8 y 15 dígitos numéricos (opcionalmente precedidos por '+').");
+                }
+            }
+
+            if (dto.SedeAsignada != null)
+            {
+                var sedeTrim = dto.SedeAsignada.Trim();
+                if (string.IsNullOrWhiteSpace(sedeTrim) || sedeTrim.Length < 2 || sedeTrim.Length > 100 ||
+                    sedeTrim.Contains('<') || sedeTrim.Contains('>') ||
+                    !System.Text.RegularExpressions.Regex.IsMatch(sedeTrim, @"^(?=.*[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ])[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\-\.\(\)]+$"))
+                {
+                    throw new ValidationException("La sede asignada debe tener entre 2 y 100 caracteres válidos.");
+                }
+            }
+
+            if (dto.TorneosAsignados != null)
+            {
+                if (dto.TorneosAsignados.Count > 50)
+                {
+                    throw new ValidationException("La lista de torneos asignados no puede superar los 50 torneos.");
+                }
+                if (dto.TorneosAsignados.Any(t => t == Guid.Empty))
+                {
+                    throw new ValidationException("La lista de torneos asignados no puede contener identificadores vacíos.");
+                }
+                if (dto.TorneosAsignados.Distinct().Count() != dto.TorneosAsignados.Count)
+                {
+                    throw new ValidationException("La lista de torneos asignados no puede contener identificadores duplicados.");
+                }
             }
 
             var usuario = await _usuarioRepository.GetByIdAsync(id);
@@ -95,8 +222,8 @@ namespace BusinessLogic.Services
                 throw new NotFoundException($"No se encontró el veedor con ID {id}");
             }
 
-            usuario.Nombre = dto.Nombre.Trim();
-            usuario.Apellido = dto.Apellido.Trim();
+            usuario.Nombre = nombreTrim;
+            usuario.Apellido = apellidoTrim;
             usuario.Telefono = dto.Telefono?.Trim();
             usuario.SedeAsignada = dto.SedeAsignada?.Trim();
 
@@ -112,6 +239,11 @@ namespace BusinessLogic.Services
 
         public async Task DeactivateVeedorAsync(Guid id)
         {
+            if (id == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del veedor no puede ser vacío.");
+            }
+
             var usuario = await _usuarioRepository.GetByIdAsync(id);
             if (usuario == null || usuario.Rol != RolUsuario.Veedor)
             {
@@ -124,6 +256,11 @@ namespace BusinessLogic.Services
 
         public async Task<VeedorResponseDTO> GetByIdAsync(Guid id)
         {
+            if (id == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del veedor no puede ser vacío.");
+            }
+
             var usuario = await _usuarioRepository.GetByIdAsync(id);
             if (usuario == null || usuario.Rol != RolUsuario.Veedor)
             {
@@ -146,6 +283,15 @@ namespace BusinessLogic.Services
             Guid? currentUserId = null, 
             string? currentUserRol = null)
         {
+            if (veedorId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del veedor no puede ser vacío.");
+            }
+
+            if (torneoId.HasValue && torneoId.Value == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+            }
             // RN Paso 3a: Acceso no autorizado (HTTP 403 Forbidden)
             if (currentUserId.HasValue && 
                 currentUserId.Value != veedorId && 

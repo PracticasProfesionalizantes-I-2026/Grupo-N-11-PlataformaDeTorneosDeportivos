@@ -27,7 +27,7 @@ namespace API.IntegrationTests
         public async Task CreateVeedor_WithValidData_Returns201Created()
         {
             // Arrange
-            var uniqueDni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8);
+            var uniqueDni = $"{Random.Shared.Next(10000000, 99999999)}";
             var uniqueEmail = $"veedor_{Guid.NewGuid():N}@torneos.com";
 
             var dto = new VeedorCreateDTO
@@ -78,7 +78,7 @@ namespace API.IntegrationTests
         public async Task CreateVeedor_WhenDuplicateData_Returns409Conflict()
         {
             // Arrange - Crear primer veedor
-            var dniCompartido = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8);
+            var dniCompartido = $"{Random.Shared.Next(10000000, 99999999)}";
             var emailCompartido = $"duplicado_{Guid.NewGuid():N}@torneos.com";
 
             var dtoPrimero = new VeedorCreateDTO
@@ -111,7 +111,7 @@ namespace API.IntegrationTests
         public async Task UpdateVeedor_Returns200OK()
         {
             // Arrange - Crear veedor inicial
-            var uniqueDni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8);
+            var uniqueDni = $"{Random.Shared.Next(10000000, 99999999)}";
             var uniqueEmail = $"update_{Guid.NewGuid():N}@torneos.com";
 
             var dto = new VeedorCreateDTO
@@ -151,7 +151,7 @@ namespace API.IntegrationTests
         public async Task DeactivateVeedor_Returns204NoContent()
         {
             // Arrange - Crear veedor inicial
-            var uniqueDni = $"{Guid.NewGuid().GetHashCode():N}".Substring(0, 8);
+            var uniqueDni = $"{Random.Shared.Next(10000000, 99999999)}";
             var uniqueEmail = $"deactivate_{Guid.NewGuid():N}@torneos.com";
 
             var dto = new VeedorCreateDTO

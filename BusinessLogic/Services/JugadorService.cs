@@ -31,6 +31,9 @@ namespace BusinessLogic.Services
 
         public async Task<IEnumerable<JugadorResponseDTO>> GetByEquipoIdAsync(Guid equipoId)
         {
+            if (equipoId == Guid.Empty)
+                throw new ValidationException("El identificador del equipo no puede ser vacío.");
+
             var jugadores = await _jugadorRepository.FindAsync(j => j.EquipoId == equipoId);
             return jugadores.Select(MapToResponseDTO);
         }
@@ -46,27 +49,132 @@ namespace BusinessLogic.Services
                 throw new ValidationException("El DNI debe contener solo números.");
             }
 
+            if (normalizedDni.Length < 7 || normalizedDni.Length > 8)
+            {
+                throw new ValidationException("El DNI debe tener entre 7 y 8 dígitos numéricos.");
+            }
+
+            var nombreTrim = dto.Nombre?.Trim() ?? string.Empty;
+            var apellidoTrim = dto.Apellido?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(nombreTrim) ||
+                nombreTrim.Length < 2 ||
+                nombreTrim.Length > 60 ||
+                !System.Text.RegularExpressions.Regex.IsMatch(nombreTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
+            {
+                throw new ValidationException("El nombre del jugador debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
+            }
+
+            if (string.IsNullOrWhiteSpace(apellidoTrim) ||
+                apellidoTrim.Length < 2 ||
+                apellidoTrim.Length > 60 ||
+                !System.Text.RegularExpressions.Regex.IsMatch(apellidoTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
+            {
+                throw new ValidationException("El apellido del jugador debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
+            }
+
+            if (dto.Telefono != null)
+            {
+                var telTrim = dto.Telefono.Trim();
+                if (string.IsNullOrWhiteSpace(telTrim) || !System.Text.RegularExpressions.Regex.IsMatch(telTrim, @"^\+?[0-9]{8,15}$"))
+                {
+                    throw new ValidationException("El teléfono del jugador debe contener únicamente entre 8 y 15 dígitos numéricos (opcionalmente precedidos por '+').");
+                }
+            }
+
+            if (dto.Email != null)
+            {
+                var emailTrim = dto.Email.Trim();
+                if (string.IsNullOrWhiteSpace(emailTrim) || emailTrim.Length > 150 || emailTrim.Contains('<') || emailTrim.Contains('>') ||
+                    !System.Text.RegularExpressions.Regex.IsMatch(emailTrim, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                {
+                    throw new ValidationException("El correo electrónico del jugador no tiene un formato válido.");
+                }
+            }
+
+            if (dto.Edad.HasValue && (dto.Edad.Value < 5 || dto.Edad.Value > 90))
+            {
+                throw new ValidationException("La edad del jugador debe estar entre 5 y 90 años.");
+            }
+
+            if (dto.FechaNacimiento.HasValue)
+            {
+                var hoy = DateTime.Today;
+                var fn = dto.FechaNacimiento.Value.Date;
+                int edadCalc = hoy.Year - fn.Year;
+                if (fn > hoy.AddYears(-edadCalc))
+                    edadCalc--;
+                if (fn > hoy || edadCalc < 5 || edadCalc > 90)
+                {
+                    throw new ValidationException("La fecha de nacimiento del jugador debe corresponder a una edad lógica entre 5 y 90 años.");
+                }
+            }
+
+            if (dto.NumeroCamiseta.HasValue && (dto.NumeroCamiseta.Value < 1 || dto.NumeroCamiseta.Value > 99))
+            {
+                throw new ValidationException("El número de camiseta debe estar entre 1 y 99.");
+            }
+
+            if (dto.Dorsal.HasValue && (dto.Dorsal.Value < 1 || dto.Dorsal.Value > 99))
+            {
+                throw new ValidationException("El dorsal debe estar entre 1 y 99.");
+            }
+
+            if (dto.Posicion != null)
+            {
+                var posTrim = dto.Posicion.Trim();
+                if (string.IsNullOrWhiteSpace(posTrim) || posTrim.Length < 2 || posTrim.Length > 40 ||
+                    !System.Text.RegularExpressions.Regex.IsMatch(posTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-]+$"))
+                {
+                    throw new ValidationException("La posición del jugador debe tener entre 2 y 40 caracteres y contener solo letras.");
+                }
+            }
+
+            if (dto.DocumentacionUrl != null)
+            {
+                var docTrim = dto.DocumentacionUrl.Trim();
+                if (string.IsNullOrWhiteSpace(docTrim) || docTrim.Length > 500 || docTrim.Contains('<') || docTrim.Contains('>'))
+                {
+                    throw new ValidationException("La URL de documentación no es válida o supera los 500 caracteres.");
+                }
+            }
+
+            if (dto.FotoUrl != null)
+            {
+                var fotoTrim = dto.FotoUrl.Trim();
+                if (string.IsNullOrWhiteSpace(fotoTrim) || fotoTrim.Length > 500 || fotoTrim.Contains('<') || fotoTrim.Contains('>'))
+                {
+                    throw new ValidationException("La URL de la foto no es válida o supera los 500 caracteres.");
+                }
+            }
+
+            if (dto.EquipoId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del equipo no puede ser vacío.");
+            }
+
             var equipoDestino = await _equipoRepository.GetByIdAsync(dto.EquipoId);
             if (equipoDestino == null)
                 throw new NotFoundException($"No se encontró el equipo con ID {dto.EquipoId}");
 
             // Regla Estricta: Un jugador no puede estar inscrito en más de un equipo en un mismo torneo.
-            var jugadoresEnTorneo = await _jugadorRepository.FindAsync(j => j.Dni == dto.Dni);
+            var jugadoresEnTorneo = await _jugadorRepository.FindAsync(j => j.Dni == normalizedDni);
             
             foreach(var jugadorExistente in jugadoresEnTorneo)
             {
                 var equipoExistente = await _equipoRepository.GetByIdAsync(jugadorExistente.EquipoId);
                 if (equipoExistente != null && equipoExistente.TorneoId == equipoDestino.TorneoId)
                 {
-                    throw new BusinessRuleConflictException($"El jugador con DNI {dto.Dni} ya se encuentra inscrito en el equipo '{equipoExistente.Nombre}' del mismo torneo.");
+                    throw new BusinessRuleConflictException($"El jugador con DNI {normalizedDni} ya se encuentra inscrito en el equipo '{equipoExistente.Nombre}' del mismo torneo.");
                 }
             }
 
             var jugador = new Jugador
             {
-                Nombre = dto.Nombre,
-                Apellido = dto.Apellido,
-                Dni = dto.Dni,
+                Nombre = nombreTrim,
+                Apellido = apellidoTrim,
+                Dni = normalizedDni,
+                DocumentacionUrl = dto.DocumentacionUrl?.Trim(),
                 EquipoId = dto.EquipoId
             };
 
@@ -76,6 +184,9 @@ namespace BusinessLogic.Services
 
         public async Task DeleteAsync(Guid id)
         {
+            if (id == Guid.Empty)
+                throw new ValidationException("El identificador del jugador no puede ser vacío.");
+
             var jugador = await _jugadorRepository.GetByIdAsync(id);
             if (jugador == null)
                 throw new NotFoundException($"No se encontró el jugador con ID {id}");
@@ -85,6 +196,9 @@ namespace BusinessLogic.Services
 
         public async Task<JugadorEstadisticasDTO> GetEstadisticasAsync(Guid id)
         {
+            if (id == Guid.Empty)
+                throw new ValidationException("El identificador del jugador no puede ser vacío.");
+
             var jugador = await _jugadorRepository.GetByIdWithEquipoAndTorneoAsync(id);
             if (jugador == null)
             {

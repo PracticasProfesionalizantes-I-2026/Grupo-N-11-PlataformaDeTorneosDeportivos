@@ -8,7 +8,7 @@ using Shared.DTOs;
 namespace API.Controllers
 {
     [ApiController]
-    [Route("api/torneos/{torneoId:guid}/fixture")]
+    [Route("api/torneos/{torneoId}/fixture")]
     public class FixtureController : ControllerBase
     {
         private readonly IFixtureService _fixtureService;

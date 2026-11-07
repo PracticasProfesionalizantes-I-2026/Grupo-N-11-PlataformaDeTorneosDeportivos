@@ -24,6 +24,11 @@ namespace BusinessLogic.Services
 
         public async Task<AprobarInscripcionResponseDTO> AprobarInscripcionAsync(Guid torneoId, Guid equipoId)
         {
+            if (torneoId == Guid.Empty)
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+            if (equipoId == Guid.Empty)
+                throw new ValidationException("El identificador del equipo no puede ser vacío.");
+
             // 2a. Verificar existencia del torneo
             var torneo = await _torneoRepository.GetByIdAsync(torneoId);
             if (torneo == null)
@@ -78,9 +83,31 @@ namespace BusinessLogic.Services
 
         public async Task<RechazarInscripcionResponseDTO> RechazarInscripcionAsync(Guid torneoId, Guid equipoId, RechazarInscripcionDTO dto)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.MotivoRechazo))
+            if (torneoId == Guid.Empty)
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+            if (equipoId == Guid.Empty)
+                throw new ValidationException("El identificador del equipo no puede ser vacío.");
+
+            if (dto == null)
             {
                 throw new ValidationException("El motivo de rechazo es obligatorio.");
+            }
+
+            var rawMotivo = !string.IsNullOrWhiteSpace(dto.MotivoRechazo) ? dto.MotivoRechazo : dto.Motivo;
+            if (string.IsNullOrWhiteSpace(rawMotivo))
+            {
+                throw new ValidationException("El motivo de rechazo es obligatorio.");
+            }
+
+            var motivoTrim = rawMotivo.Trim();
+            if (motivoTrim.Length < 3 || motivoTrim.Length > 500)
+            {
+                throw new ValidationException("El motivo de rechazo debe tener entre 3 y 500 caracteres.");
+            }
+
+            if (motivoTrim.Contains('<') || motivoTrim.Contains('>'))
+            {
+                throw new ValidationException("El motivo de rechazo contiene caracteres no permitidos.");
             }
 
             // 2a. Verificar existencia del torneo
@@ -105,7 +132,7 @@ namespace BusinessLogic.Services
 
             // 3d. RN-03: Rechazo con observaciones y liberación de edición de lista
             equipo.EstadoInscripcion = EstadoInscripcion.RechazadoObservado;
-            equipo.MotivoRechazo = dto.MotivoRechazo.Trim();
+            equipo.MotivoRechazo = motivoTrim;
             equipo.EdicionListaHabilitada = true; // RN-03: libera edición para el capitán
             await _equipoRepository.UpdateAsync(equipo);
 

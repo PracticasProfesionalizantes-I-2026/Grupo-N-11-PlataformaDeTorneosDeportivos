@@ -34,6 +34,9 @@ namespace BusinessLogic.Services
 
         public async Task<TorneoResponseDTO> GetByIdAsync(Guid id)
         {
+            if (id == Guid.Empty)
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+
             var torneo = await _torneoRepository.GetByIdAsync(id);
             if (torneo == null)
                 throw new NotFoundException($"No se encontró el torneo con ID {id}");
@@ -43,7 +46,15 @@ namespace BusinessLogic.Services
 
         public async Task<TorneoResponseDTO> CreateTorneoAsync(TorneoCreateDTO dto)
         {
+            if (dto == null)
+                throw new ValidationException("Los datos del torneo son obligatorios.");
+
             // Paso 3 del CU-04: Normalización y verificación de existencia de disciplina
+            if (!Enum.IsDefined(typeof(Disciplina), dto.Disciplina))
+            {
+                throw new DisciplinaNotFoundException("La disciplina especificada no existe");
+            }
+
             if (dto.DisciplinaId.HasValue)
             {
                 if (!Enum.IsDefined(typeof(Disciplina), dto.DisciplinaId.Value))
@@ -52,12 +63,68 @@ namespace BusinessLogic.Services
                 }
                 dto.Disciplina = (Disciplina)dto.DisciplinaId.Value;
             }
-            else if (!Enum.IsDefined(typeof(Disciplina), dto.Disciplina))
+
+            if (!Enum.IsDefined(typeof(Modalidad), dto.Modalidad))
             {
-                throw new DisciplinaNotFoundException("La disciplina especificada no existe");
+                throw new ValidationException("La modalidad especificada no es válida.");
+            }
+
+            if (dto.ModalidadId.HasValue)
+            {
+                if (!Enum.IsDefined(typeof(Modalidad), dto.ModalidadId.Value))
+                {
+                    throw new ValidationException("La modalidad especificada no es válida.");
+                }
+                dto.Modalidad = (Modalidad)dto.ModalidadId.Value;
             }
 
             var normalizedName = dto.Nombre?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedName) ||
+                normalizedName.Length < 3 ||
+                normalizedName.Length > 100 ||
+                normalizedName.Contains('<') ||
+                normalizedName.Contains('>') ||
+                !System.Text.RegularExpressions.Regex.IsMatch(normalizedName, @"^(?=.*[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ])[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\-\.\(\)\/]+$"))
+            {
+                throw new ValidationException("El nombre del torneo debe tener entre 3 y 100 caracteres válidos.");
+            }
+
+            if (dto.Descripcion != null)
+            {
+                var descTrim = dto.Descripcion.Trim();
+                if (string.IsNullOrWhiteSpace(descTrim) || descTrim.Length < 3 || descTrim.Length > 500 || descTrim.Contains('<') || descTrim.Contains('>'))
+                {
+                    throw new ValidationException("La descripción del torneo debe tener entre 3 y 500 caracteres válidos y no puede estar vacía.");
+                }
+            }
+
+            if (dto.Reglamento != null)
+            {
+                var regTrim = dto.Reglamento.Trim();
+                if (string.IsNullOrWhiteSpace(regTrim) || regTrim.Length < 3 || regTrim.Length > 2000 || regTrim.Contains('<') || regTrim.Contains('>'))
+                {
+                    throw new ValidationException("El reglamento del torneo debe tener entre 3 y 2000 caracteres válidos y no puede estar vacío.");
+                }
+            }
+
+            if (dto.FechaInicio.HasValue)
+            {
+                var f = dto.FechaInicio.Value.Date;
+                if (f < DateTime.Today || f > DateTime.Today.AddYears(5))
+                {
+                    throw new ValidationException("La fecha de inicio del torneo no puede estar en el pasado ni superar los 5 años a futuro.");
+                }
+            }
+
+            if (dto.FechaFin.HasValue)
+            {
+                var fFin = dto.FechaFin.Value.Date;
+                var minDate = dto.FechaInicio.HasValue ? dto.FechaInicio.Value.Date : DateTime.Today;
+                if (fFin < minDate || fFin > DateTime.Today.AddYears(5))
+                {
+                    throw new ValidationException("La fecha de finalización no puede ser anterior a la fecha de inicio ni estar en el pasado.");
+                }
+            }
 
             // Paso 3 del CU-04: Comprobar que no exista otro torneo con el mismo nombre
             var torneoExistente = await _torneoRepository.GetByNombreAsync(normalizedName);
@@ -76,7 +143,7 @@ namespace BusinessLogic.Services
                 Disciplina = dto.Disciplina,
                 Modalidad = dto.Modalidad,
                 CupoMaximo = dto.CupoMaximo,
-                EsPago = dto.EsPago || dto.CostoInscripcion > 0,
+                EsPago = dto.EsPago,
                 CostoInscripcion = dto.CostoInscripcion,
                 Estado = EstadoTorneo.Abierto
             };
@@ -92,29 +159,122 @@ namespace BusinessLogic.Services
 
         public async Task<TorneoResponseDTO> UpdateAsync(Guid id, TorneoUpdateDTO dto)
         {
+            if (id == Guid.Empty)
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+
+            if (dto == null)
+                throw new ValidationException("Los datos del torneo son obligatorios.");
+
+            if (!Enum.IsDefined(typeof(Disciplina), dto.Disciplina))
+            {
+                throw new DisciplinaNotFoundException("La disciplina especificada no existe");
+            }
+
+            if (dto.DisciplinaId.HasValue)
+            {
+                if (!Enum.IsDefined(typeof(Disciplina), dto.DisciplinaId.Value))
+                {
+                    throw new DisciplinaNotFoundException("La disciplina especificada no existe");
+                }
+                dto.Disciplina = (Disciplina)dto.DisciplinaId.Value;
+            }
+
+            if (!Enum.IsDefined(typeof(Modalidad), dto.Modalidad))
+            {
+                throw new ValidationException("La modalidad especificada no es válida.");
+            }
+
+            if (dto.ModalidadId.HasValue)
+            {
+                if (!Enum.IsDefined(typeof(Modalidad), dto.ModalidadId.Value))
+                {
+                    throw new ValidationException("La modalidad especificada no es válida.");
+                }
+                dto.Modalidad = (Modalidad)dto.ModalidadId.Value;
+            }
+
+            var normalizedName = dto.Nombre?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedName) ||
+                normalizedName.Length < 3 ||
+                normalizedName.Length > 100 ||
+                normalizedName.Contains('<') ||
+                normalizedName.Contains('>') ||
+                !System.Text.RegularExpressions.Regex.IsMatch(normalizedName, @"^(?=.*[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ])[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\-\.\(\)\/]+$"))
+            {
+                throw new ValidationException("El nombre del torneo debe tener entre 3 y 100 caracteres válidos.");
+            }
+
+            if (dto.Descripcion != null)
+            {
+                var descTrim = dto.Descripcion.Trim();
+                if (string.IsNullOrWhiteSpace(descTrim) || descTrim.Length < 3 || descTrim.Length > 500 || descTrim.Contains('<') || descTrim.Contains('>'))
+                {
+                    throw new ValidationException("La descripción del torneo debe tener entre 3 y 500 caracteres válidos y no puede estar vacía.");
+                }
+            }
+
+            if (dto.Reglamento != null)
+            {
+                var regTrim = dto.Reglamento.Trim();
+                if (string.IsNullOrWhiteSpace(regTrim) || regTrim.Length < 3 || regTrim.Length > 2000 || regTrim.Contains('<') || regTrim.Contains('>'))
+                {
+                    throw new ValidationException("El reglamento del torneo debe tener entre 3 y 2000 caracteres válidos y no puede estar vacío.");
+                }
+            }
+
+            if (dto.FechaInicio.HasValue)
+            {
+                var f = dto.FechaInicio.Value.Date;
+                if (f < DateTime.Today || f > DateTime.Today.AddYears(5))
+                {
+                    throw new ValidationException("La fecha de inicio del torneo no puede estar en el pasado ni superar los 5 años a futuro.");
+                }
+            }
+
+            if (dto.FechaFin.HasValue)
+            {
+                var fFin = dto.FechaFin.Value.Date;
+                var minDate = dto.FechaInicio.HasValue ? dto.FechaInicio.Value.Date : DateTime.Today;
+                if (fFin < minDate || fFin > DateTime.Today.AddYears(5))
+                {
+                    throw new ValidationException("La fecha de finalización no puede ser anterior a la fecha de inicio ni estar en el pasado.");
+                }
+            }
+
             var torneo = await _torneoRepository.GetByIdAsync(id);
             if (torneo == null)
                 throw new NotFoundException($"No se encontró el torneo con ID {id}");
 
+            var torneoConMismoNombre = await _torneoRepository.GetByNombreAsync(normalizedName);
+            if (torneoConMismoNombre != null && torneoConMismoNombre.Id != id)
+            {
+                throw new TorneoNombreDuplicadoException("Ya existe un torneo con el nombre ingresado");
+            }
+
             var createEquivalent = new TorneoCreateDTO
             {
-                Nombre = dto.Nombre,
+                Nombre = normalizedName,
                 Disciplina = dto.Disciplina,
                 DisciplinaId = dto.DisciplinaId,
                 Modalidad = dto.Modalidad,
+                ModalidadId = dto.ModalidadId,
                 CupoMaximo = dto.CupoMaximo,
                 EsPago = dto.EsPago,
                 CostoInscripcion = dto.CostoInscripcion,
-                CuentaRecaudadoraActiva = dto.CuentaRecaudadoraActiva
+                CuentaRecaudadoraActiva = dto.CuentaRecaudadoraActiva,
+                Descripcion = dto.Descripcion,
+                Reglamento = dto.Reglamento,
+                FechaInicio = dto.FechaInicio,
+                FechaFin = dto.FechaFin
             };
 
             await ValidateRulesAsync(createEquivalent);
 
-            torneo.Nombre = dto.Nombre.Trim();
+            torneo.Nombre = normalizedName;
             torneo.Disciplina = dto.Disciplina;
             torneo.Modalidad = dto.Modalidad;
             torneo.CupoMaximo = dto.CupoMaximo;
-            torneo.EsPago = dto.EsPago || dto.CostoInscripcion > 0;
+            torneo.EsPago = dto.EsPago;
             torneo.CostoInscripcion = dto.CostoInscripcion;
 
             await _torneoRepository.UpdateAsync(torneo);
@@ -123,6 +283,9 @@ namespace BusinessLogic.Services
 
         public async Task DeleteAsync(Guid id)
         {
+            if (id == Guid.Empty)
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+
             var torneo = await _torneoRepository.GetByIdAsync(id);
             if (torneo == null)
                 throw new NotFoundException($"No se encontró el torneo con ID {id}");
@@ -132,6 +295,21 @@ namespace BusinessLogic.Services
 
         private async Task ValidateRulesAsync(TorneoCreateDTO dto)
         {
+            if (!Enum.IsDefined(typeof(Disciplina), dto.Disciplina))
+            {
+                throw new DisciplinaNotFoundException("La disciplina especificada no existe");
+            }
+
+            if (!Enum.IsDefined(typeof(Modalidad), dto.Modalidad))
+            {
+                throw new ValidationException("La modalidad especificada no es válida.");
+            }
+
+            if (dto.CupoMaximo < 2 || dto.CupoMaximo > 128)
+            {
+                throw new ValidationException("El cupo máximo debe ser al menos 2 y no superar los 128 equipos.");
+            }
+
             // RN-04: Eliminación directa requiere cupo mínimo de 4 y potencia de 2
             if (dto.Modalidad == Modalidad.EliminacionDirecta)
             {
@@ -146,14 +324,27 @@ namespace BusinessLogic.Services
                     throw new CupoInvalidoEliminacionException("Para torneos de eliminación directa el cupo debe ser potencia de 2 y mínimo 4 (RN-04)");
                 }
             }
-
-            // Validar monto no negativo
-            if (dto.CostoInscripcion < 0)
+            else if (dto.Modalidad == Modalidad.Liga)
             {
-                throw new ValidationException("El costo de inscripción no puede ser negativo.");
+                if (dto.CupoMaximo < 2)
+                {
+                    throw new ValidationException("Los torneos de Liga requieren un cupo mínimo de 2 equipos.");
+                }
             }
 
-            // RN-05: Si el torneo es de pago, costo > 0 y cuenta recaudadora activa obligatoria
+            // Validar monto no negativo ni excesivo
+            if (dto.CostoInscripcion < 0 || dto.CostoInscripcion > 100_000_000m)
+            {
+                throw new ValidationException("El costo de inscripción no puede ser negativo ni superar los 100.000.000.");
+            }
+
+            // Coherencia estricta entre EsPago y CostoInscripcion (Caso 1: EsPago == false)
+            if (!dto.EsPago && dto.CostoInscripcion != 0)
+            {
+                throw new CostoInvalidoException("No se puede ingresar un costo de inscripción si el torneo es gratuito (EsPago = false)");
+            }
+
+            // RN-05: Si el torneo es de pago (Caso 2: EsPago == true), costo > 0 y cuenta recaudadora activa obligatoria
             if (dto.EsPago)
             {
                 if (dto.CostoInscripcion <= 0)
@@ -181,6 +372,9 @@ namespace BusinessLogic.Services
 
         public async Task<IEnumerable<PosicionTablaDTO>> GetPosicionesAsync(Guid torneoId)
         {
+            if (torneoId == Guid.Empty)
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+
             var torneo = await _torneoRepository.GetTorneoConEquiposAsync(torneoId);
             if (torneo == null)
             {
@@ -307,6 +501,9 @@ namespace BusinessLogic.Services
 
         public async Task<BracketTorneoDTO> GetLlavesAsync(Guid torneoId)
         {
+            if (torneoId == Guid.Empty)
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+
             var torneo = await _torneoRepository.GetTorneoConEquiposAsync(torneoId);
             if (torneo == null)
             {

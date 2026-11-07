@@ -45,7 +45,13 @@ namespace API.Middlewares
                     code = HttpStatusCode.NotFound; // 404
                     break;
                 case ValidationException _:
+                case JsonException _:
+                case BadHttpRequestException _:
                     code = HttpStatusCode.BadRequest; // 400
+                    if (string.IsNullOrWhiteSpace(message))
+                    {
+                        message = "El formato de la petición es inválido.";
+                    }
                     break;
                 case UsuarioDuplicadoException _:
                 case PartidoEstadoInvalidoException _:
