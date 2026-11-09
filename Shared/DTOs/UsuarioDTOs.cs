@@ -93,4 +93,19 @@ namespace Shared.DTOs
         public DateTime FechaCreacion { get; set; }
         public string Mensaje { get; set; } = string.Empty;
     }
+
+    public class CambiarRolDTO : IValidatableObject
+    {
+        [Required(ErrorMessage = "El nuevo rol es obligatorio.")]
+        [EnumDataType(typeof(RolUsuario), ErrorMessage = "El rol de usuario especificado no es válido.")]
+        public RolUsuario NuevoRol { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (!Enum.IsDefined(typeof(RolUsuario), NuevoRol))
+            {
+                yield return new ValidationResult("El rol de usuario especificado no es válido.", new[] { nameof(NuevoRol) });
+            }
+        }
+    }
 }

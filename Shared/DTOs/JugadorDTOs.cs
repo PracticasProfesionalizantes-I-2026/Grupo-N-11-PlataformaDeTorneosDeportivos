@@ -139,5 +139,15 @@ namespace Shared.DTOs
         public string Dni { get; set; } = string.Empty;
         public string? DocumentacionUrl { get; set; }
         public Guid EquipoId { get; set; }
+        public bool Inhabilitado { get; set; }
+    }
+
+    public class JugadorPublicResponseDTO
+    {
+        public Guid Id { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string Apellido { get; set; } = string.Empty;
+        public Guid EquipoId { get; set; }
+        public bool Inhabilitado { get; set; }
     }
 }

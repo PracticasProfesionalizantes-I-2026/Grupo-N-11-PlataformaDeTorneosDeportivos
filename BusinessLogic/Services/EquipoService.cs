@@ -16,17 +16,20 @@ namespace BusinessLogic.Services
         private readonly ITorneoRepository _torneoRepository;
         private readonly IJugadorRepository _jugadorRepository;
         private readonly IPartidoRepository? _partidoRepository;
+        private readonly IInscripcionService? _inscripcionService;
 
         public EquipoService(
             IEquipoRepository equipoRepository,
             ITorneoRepository torneoRepository,
             IJugadorRepository jugadorRepository,
-            IPartidoRepository? partidoRepository = null)
+            IPartidoRepository? partidoRepository = null,
+            IInscripcionService? inscripcionService = null)
         {
             _equipoRepository = equipoRepository;
             _torneoRepository = torneoRepository;
             _jugadorRepository = jugadorRepository;
             _partidoRepository = partidoRepository;
+            _inscripcionService = inscripcionService;
         }
 
         public async Task<IEnumerable<EquipoResponseDTO>> GetByTorneoIdAsync(Guid torneoId)
@@ -36,6 +39,67 @@ namespace BusinessLogic.Services
 
             var equipos = await _equipoRepository.GetByTorneoIdWithJugadoresAsync(torneoId);
             return equipos.Select(MapToResponseDTO);
+        }
+
+        public async Task<IEnumerable<EquipoPublicResponseDTO>> GetByTorneoIdPublicAsync(Guid torneoId)
+        {
+            if (torneoId == Guid.Empty)
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+
+            var equipos = await _equipoRepository.GetByTorneoIdWithJugadoresAsync(torneoId);
+            return equipos.Select(MapToPublicResponseDTO);
+        }
+
+        public async Task<IEnumerable<EquipoPublicResponseDTO>> GetAllPublicAsync()
+        {
+            var equipos = await _equipoRepository.GetAllWithJugadoresAsync();
+            return equipos.Select(MapToPublicResponseDTO);
+        }
+
+        public async Task<EquipoPublicResponseDTO> GetByIdPublicAsync(Guid id)
+        {
+            if (id == Guid.Empty)
+                throw new ValidationException("El identificador del equipo no puede ser vacío.");
+
+            var equipo = await _equipoRepository.GetByIdWithTorneoAndJugadoresAsync(id);
+            if (equipo == null)
+            {
+                equipo = await _equipoRepository.GetByIdAsync(id);
+                if (equipo == null)
+                    throw new NotFoundException($"No se encontró el equipo con ID {id}");
+
+                var jugadores = await _jugadorRepository.FindAsync(j => j.EquipoId == id);
+                equipo.Jugadores = jugadores.ToList();
+            }
+
+            return MapToPublicResponseDTO(equipo);
+        }
+
+        public async Task<EquipoResponseDTO> GetByIdDetalladoAsync(Guid id, Guid? usuarioId, string? rol)
+        {
+            if (id == Guid.Empty)
+                throw new ValidationException("El identificador del equipo no puede ser vacío.");
+
+            var equipo = await _equipoRepository.GetByIdWithTorneoAndJugadoresAsync(id);
+            if (equipo == null)
+            {
+                equipo = await _equipoRepository.GetByIdAsync(id);
+                if (equipo == null)
+                    throw new NotFoundException($"No se encontró el equipo con ID {id}");
+
+                var jugadores = await _jugadorRepository.FindAsync(j => j.EquipoId == id);
+                equipo.Jugadores = jugadores.ToList();
+            }
+
+            var isAuthorized = (rol == "Organizador" || rol == "Administrador") ||
+                               (rol == "Capitan" && usuarioId.HasValue && equipo.CapitanId.HasValue && equipo.CapitanId.Value == usuarioId.Value);
+
+            if (!isAuthorized)
+            {
+                throw new ForbiddenException("No tiene permisos para acceder a la nómina completa ni a los datos sensibles de este equipo.");
+            }
+
+            return MapToResponseDTO(equipo);
         }
 
         public async Task<EquipoResponseDTO> GetByIdAsync(Guid id)
@@ -67,13 +131,22 @@ namespace BusinessLogic.Services
             return await CreateEquipoAsync(dto.TorneoId, dto);
         }
 
-        public async Task<EquipoResponseDTO> CreateEquipoAsync(Guid torneoId, EquipoCreateDTO dto)
+        public async Task<EquipoResponseDTO> CreateEquipoAsync(Guid torneoId, EquipoCreateDTO dto, Guid? solicitanteId = null, string? rolSolicitante = null)
         {
             if (dto == null)
                 throw new ValidationException("Los datos del equipo son requeridos.");
 
             if (torneoId == Guid.Empty)
                 throw new ValidationException("El identificador del torneo no puede ser vacío.");
+
+            if (solicitanteId.HasValue && rolSolicitante != "Organizador" && rolSolicitante != "Administrador")
+            {
+                if (dto.CapitanId.HasValue && dto.CapitanId.Value != solicitanteId.Value)
+                {
+                    throw new ForbiddenException("No tiene permisos para registrar un equipo a nombre de otro capitán.");
+                }
+                dto.CapitanId ??= solicitanteId.Value;
+            }
 
             var nombreNormalizado = dto.Nombre?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(nombreNormalizado) || nombreNormalizado.Length < 3 || nombreNormalizado.Length > 100)
@@ -321,8 +394,11 @@ namespace BusinessLogic.Services
                 Id = Guid.NewGuid(),
                 Nombre = nombreNormalizado,
                 Logo = (dto.LogoUrl ?? dto.Logo)?.Trim(),
+                ComprobanteUrl = (dto.ComprobanteUrl ?? dto.Comprobante)?.Trim(),
+                PagoValidado = false,
                 EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
                 TorneoId = torneoId,
+                CapitanId = dto.CapitanId,
                 Jugadores = dto.Jugadores.Select(j => new Jugador
                 {
                     Id = Guid.NewGuid(),
@@ -340,6 +416,11 @@ namespace BusinessLogic.Services
 
         public async Task<EquipoResponseDTO> CambiarEstadoAsync(Guid id, string nuevoEstadoStr)
         {
+            if (_inscripcionService != null)
+            {
+                return await _inscripcionService.CambiarEstadoEquipoAsync(id, nuevoEstadoStr);
+            }
+
             if (id == Guid.Empty)
                 throw new ValidationException("El identificador del equipo no puede ser vacío.");
 
@@ -354,14 +435,36 @@ namespace BusinessLogic.Services
             if (equipo == null)
                 throw new NotFoundException($"No se encontró el equipo con ID {id}");
 
+            var torneo = await _torneoRepository.GetByIdAsync(equipo.TorneoId);
+            if (torneo == null)
+                throw new NotFoundException($"El torneo con ID {equipo.TorneoId} no existe.");
+
+            var estadoActual = equipo.EstadoInscripcion;
+
             if (nuevoEstado == EstadoInscripcion.InscritoYConfirmado)
             {
-                var torneo = await _torneoRepository.GetByIdAsync(equipo.TorneoId);
-                var equiposConfirmados = await _equipoRepository.FindAsync(e => e.TorneoId == equipo.TorneoId && e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado);
-
-                if (equiposConfirmados.Count() >= torneo!.CupoMaximo && equipo.EstadoInscripcion != EstadoInscripcion.InscritoYConfirmado)
+                if (estadoActual != EstadoInscripcion.PendienteDeValidacion)
                 {
-                    throw new BusinessRuleConflictException("El torneo ya ha alcanzado su cupo máximo de equipos confirmados.");
+                    throw new EstadoEquipoInvalidoException("Solo pueden dictaminarse equipos en estado Pendiente de Validación");
+                }
+
+                if (torneo.Estado != EstadoTorneo.Abierto)
+                {
+                    throw new TorneoEstadoInvalidoException("El torneo no se encuentra abierto para confirmar inscripciones.");
+                }
+
+                var esTorneoPago = torneo.EsPago || torneo.CostoInscripcion > 0;
+                if (esTorneoPago && (!equipo.PagoValidado || string.IsNullOrWhiteSpace(equipo.ComprobanteUrl)))
+                {
+                    throw new PagoRequeridoException("No es posible confirmar la inscripción sin acreditar el pago correspondiente (RN-06)");
+                }
+
+                var equiposConfirmados = await _equipoRepository.FindAsync(e => e.TorneoId == equipo.TorneoId && e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado);
+                var cantidadConfirmados = equiposConfirmados.Count();
+
+                if (cantidadConfirmados >= torneo.CupoMaximo)
+                {
+                    throw new TorneoCupoLlenoException("El torneo ya ha alcanzado su cupo máximo de equipos confirmados (RN-06).");
                 }
 
                 var jugadoresDelEquipo = await _jugadorRepository.FindAsync(j => j.EquipoId == id);
@@ -369,24 +472,47 @@ namespace BusinessLogic.Services
                 {
                     throw new BusinessRuleConflictException("El equipo no cumple con el mínimo de jugadores requeridos (Mínimo 1) para ser confirmado.");
                 }
+
+                equipo.EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado;
+                equipo.EdicionListaHabilitada = false;
+                equipo.MotivoRechazo = null;
+
+                if (cantidadConfirmados + 1 >= torneo.CupoMaximo && torneo.Estado == EstadoTorneo.Abierto)
+                {
+                    torneo.Estado = EstadoTorneo.InscripcionesCerradas;
+                }
+                await _torneoRepository.UpdateAsync(torneo);
+            }
+            else if (nuevoEstado == EstadoInscripcion.RechazadoObservado)
+            {
+                if (estadoActual != EstadoInscripcion.PendienteDeValidacion)
+                {
+                    throw new EstadoEquipoInvalidoException("Solo pueden dictaminarse equipos en estado Pendiente de Validación");
+                }
+
+                equipo.EstadoInscripcion = EstadoInscripcion.RechazadoObservado;
+                equipo.EdicionListaHabilitada = true;
+            }
+            else if (nuevoEstado == EstadoInscripcion.PendienteDeValidacion)
+            {
+                if (estadoActual == EstadoInscripcion.InscritoYConfirmado)
+                {
+                    throw new EstadoEquipoInvalidoException("Un equipo ya confirmado no puede volver a estar pendiente de validación.");
+                }
+
+                if (estadoActual == EstadoInscripcion.PendienteDeValidacion)
+                {
+                    throw new EstadoEquipoInvalidoException("El equipo ya se encuentra en estado Pendiente de Validación.");
+                }
+
+                equipo.EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion;
+                equipo.EdicionListaHabilitada = false;
             }
 
-            equipo.EstadoInscripcion = nuevoEstado;
             await _equipoRepository.UpdateAsync(equipo);
 
-            if (nuevoEstado == EstadoInscripcion.InscritoYConfirmado)
-            {
-                var torneo = await _torneoRepository.GetByIdAsync(equipo.TorneoId);
-                if (torneo != null && torneo.Estado == EstadoTorneo.Abierto)
-                {
-                    var confirmados = await _equipoRepository.FindAsync(e => e.TorneoId == equipo.TorneoId && e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado);
-                    if (confirmados != null && confirmados.Count() >= torneo.CupoMaximo)
-                    {
-                        torneo.Estado = EstadoTorneo.InscripcionesCerradas;
-                        await _torneoRepository.UpdateAsync(torneo);
-                    }
-                }
-            }
+            var jugadoresLista = await _jugadorRepository.FindAsync(j => j.EquipoId == id);
+            equipo.Jugadores = jugadoresLista.ToList();
 
             return MapToResponseDTO(equipo);
         }
@@ -576,8 +702,13 @@ namespace BusinessLogic.Services
                 Id = equipo.Id,
                 Nombre = equipo.Nombre,
                 Logo = equipo.Logo,
+                ComprobanteUrl = equipo.ComprobanteUrl,
+                PagoValidado = equipo.PagoValidado,
+                EdicionListaHabilitada = equipo.EdicionListaHabilitada,
+                MotivoRechazo = equipo.MotivoRechazo,
                 EstadoInscripcion = equipo.EstadoInscripcion.ToString(),
                 TorneoId = equipo.TorneoId,
+                CapitanId = equipo.CapitanId,
                 CantidadJugadores = equipo.Jugadores?.Count ?? 0,
                 Jugadores = equipo.Jugadores?.Select(j => new JugadorResponseDTO
                 {
@@ -586,8 +717,30 @@ namespace BusinessLogic.Services
                     Apellido = j.Apellido,
                     Dni = j.Dni,
                     DocumentacionUrl = j.DocumentacionUrl,
-                    EquipoId = j.EquipoId
+                    EquipoId = j.EquipoId,
+                    Inhabilitado = j.Inhabilitado
                 }).ToList() ?? new List<JugadorResponseDTO>()
+            };
+        }
+
+        private static EquipoPublicResponseDTO MapToPublicResponseDTO(Equipo equipo)
+        {
+            return new EquipoPublicResponseDTO
+            {
+                Id = equipo.Id,
+                Nombre = equipo.Nombre,
+                Logo = equipo.Logo,
+                EstadoInscripcion = equipo.EstadoInscripcion.ToString(),
+                TorneoId = equipo.TorneoId,
+                CantidadJugadores = equipo.Jugadores?.Count ?? 0,
+                Jugadores = equipo.Jugadores?.Select(j => new JugadorPublicResponseDTO
+                {
+                    Id = j.Id,
+                    Nombre = j.Nombre,
+                    Apellido = j.Apellido,
+                    EquipoId = j.EquipoId,
+                    Inhabilitado = j.Inhabilitado
+                }).ToList() ?? new List<JugadorPublicResponseDTO>()
             };
         }
     }

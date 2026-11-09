@@ -14,12 +14,14 @@ namespace BusinessLogic.Tests
     public class PartidoServiceTests
     {
         private readonly Mock<IPartidoRepository> _partidoRepositoryMock;
+        private readonly Mock<ITorneoRepository> _torneoRepositoryMock;
         private readonly PartidoService _partidoService;
 
         public PartidoServiceTests()
         {
             _partidoRepositoryMock = new Mock<IPartidoRepository>();
-            _partidoService = new PartidoService(_partidoRepositoryMock.Object);
+            _torneoRepositoryMock = new Mock<ITorneoRepository>();
+            _partidoService = new PartidoService(_partidoRepositoryMock.Object, _torneoRepositoryMock.Object);
         }
 
         [Fact]
@@ -223,6 +225,226 @@ namespace BusinessLogic.Tests
 
             Assert.Equal("Los marcadores deben ser valores numéricos no negativos.", ex.Message);
             _partidoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Partido>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoadResultadoAsync_EliminacionDirecta_WhenBothSemifinalsFinished_CreatesFinalMatch()
+        {
+            // Arrange - Torneo 4 equipos (Semifinal 1 y Semifinal 2 en Ronda 1)
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Eliminación 4",
+                Modalidad = Modalidad.EliminacionDirecta,
+                Estado = EstadoTorneo.EnDesarrollo
+            };
+
+            var eqA = Guid.NewGuid();
+            var eqB = Guid.NewGuid();
+            var eqC = Guid.NewGuid();
+            var eqD = Guid.NewGuid();
+
+            var semi1 = new Partido
+            {
+                Id = Guid.NewGuid(),
+                TorneoId = torneoId,
+                Torneo = torneo,
+                EquipoLocalId = eqA,
+                EquipoVisitanteId = eqB,
+                MarcadorLocal = 2,
+                MarcadorVisitante = 1,
+                Ronda = 1,
+                FechaHora = DateTime.Today.AddHours(10),
+                Estado = EstadoPartido.Finalizado // Ya finalizó Semifinal 1 (ganó eqA)
+            };
+
+            var semi2 = new Partido
+            {
+                Id = Guid.NewGuid(),
+                TorneoId = torneoId,
+                Torneo = torneo,
+                EquipoLocalId = eqC,
+                EquipoVisitanteId = eqD,
+                Ronda = 1,
+                FechaHora = DateTime.Today.AddHours(12),
+                Estado = EstadoPartido.Pendiente // Ahora va a finalizar Semifinal 2 (gana eqC)
+            };
+
+            var listaPartidos = new System.Collections.Generic.List<Partido> { semi1, semi2 };
+
+            _partidoRepositoryMock.Setup(r => r.GetByIdWithTorneoAndEquiposAsync(semi2.Id))
+                .ReturnsAsync(semi2);
+
+            _partidoRepositoryMock.Setup(r => r.GetPartidosByTorneoIdAsync(torneoId))
+                .ReturnsAsync(listaPartidos);
+
+            _partidoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Partido>()))
+                .Returns(Task.CompletedTask);
+
+            _partidoRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Partido>()))
+                .ReturnsAsync((Partido p) => p);
+
+            var dto = new CargarResultadoDTO
+            {
+                MarcadorLocal = 3,
+                MarcadorVisitante = 0 // Gana eqC
+            };
+
+            // Act - Cargar resultado de Semifinal 2
+            var result = await _partidoService.LoadResultadoAsync(semi2.Id, dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(eqC, result.GanadorId);
+
+            // Debe haberse creado el partido de la Ronda 2 (Final) enfrentando al ganador de semi1 vs ganador de semi2
+            _partidoRepositoryMock.Verify(r => r.AddAsync(It.Is<Partido>(p =>
+                p.Ronda == 2 &&
+                p.TorneoId == torneoId &&
+                p.EquipoLocalId == eqA &&
+                p.EquipoVisitanteId == eqC &&
+                p.Estado == EstadoPartido.Pendiente
+            )), Times.Once);
+
+            // El torneo NO debe haberse finalizado aún (sigue EnDesarrollo)
+            Assert.Equal(EstadoTorneo.EnDesarrollo, torneo.Estado);
+            _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoadResultadoAsync_EliminacionDirecta_WhenOnlyOneMatchOfPairFinished_DoesNotCreateNextRound()
+        {
+            // Arrange - Torneo 4 equipos (Solo finaliza Semifinal 1, Semifinal 2 sigue pendiente)
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Eliminación 4",
+                Modalidad = Modalidad.EliminacionDirecta,
+                Estado = EstadoTorneo.EnDesarrollo
+            };
+
+            var eqA = Guid.NewGuid();
+            var eqB = Guid.NewGuid();
+            var eqC = Guid.NewGuid();
+            var eqD = Guid.NewGuid();
+
+            var semi1 = new Partido
+            {
+                Id = Guid.NewGuid(),
+                TorneoId = torneoId,
+                Torneo = torneo,
+                EquipoLocalId = eqA,
+                EquipoVisitanteId = eqB,
+                Ronda = 1,
+                FechaHora = DateTime.Today.AddHours(10),
+                Estado = EstadoPartido.Pendiente
+            };
+
+            var semi2 = new Partido
+            {
+                Id = Guid.NewGuid(),
+                TorneoId = torneoId,
+                Torneo = torneo,
+                EquipoLocalId = eqC,
+                EquipoVisitanteId = eqD,
+                Ronda = 1,
+                FechaHora = DateTime.Today.AddHours(12),
+                Estado = EstadoPartido.Pendiente
+            };
+
+            var listaPartidos = new System.Collections.Generic.List<Partido> { semi1, semi2 };
+
+            _partidoRepositoryMock.Setup(r => r.GetByIdWithTorneoAndEquiposAsync(semi1.Id))
+                .ReturnsAsync(semi1);
+
+            _partidoRepositoryMock.Setup(r => r.GetPartidosByTorneoIdAsync(torneoId))
+                .ReturnsAsync(listaPartidos);
+
+            _partidoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Partido>()))
+                .Returns(Task.CompletedTask);
+
+            var dto = new CargarResultadoDTO
+            {
+                MarcadorLocal = 1,
+                MarcadorVisitante = 0
+            };
+
+            // Act
+            var result = await _partidoService.LoadResultadoAsync(semi1.Id, dto);
+
+            // Assert
+            Assert.NotNull(result);
+            _partidoRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Partido>()), Times.Never);
+            _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoadResultadoAsync_EliminacionDirecta_WhenFinalMatchFinished_DeclaresChampionAndFinalizesTorneo()
+        {
+            // Arrange - Partido Final (Ronda 2, único partido en la ronda)
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Eliminación 4",
+                Modalidad = Modalidad.EliminacionDirecta,
+                Estado = EstadoTorneo.EnDesarrollo
+            };
+
+            var eqA = Guid.NewGuid();
+            var eqC = Guid.NewGuid();
+
+            var finalMatch = new Partido
+            {
+                Id = Guid.NewGuid(),
+                TorneoId = torneoId,
+                Torneo = torneo,
+                EquipoLocalId = eqA,
+                EquipoVisitanteId = eqC,
+                Ronda = 2,
+                FechaHora = DateTime.Today.AddDays(1).AddHours(10),
+                Estado = EstadoPartido.Pendiente
+            };
+
+            var listaPartidos = new System.Collections.Generic.List<Partido> { finalMatch };
+
+            _partidoRepositoryMock.Setup(r => r.GetByIdWithTorneoAndEquiposAsync(finalMatch.Id))
+                .ReturnsAsync(finalMatch);
+
+            _partidoRepositoryMock.Setup(r => r.GetPartidosByTorneoIdAsync(torneoId))
+                .ReturnsAsync(listaPartidos);
+
+            _partidoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Partido>()))
+                .Returns(Task.CompletedTask);
+
+            _torneoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Torneo>()))
+                .Returns(Task.CompletedTask);
+
+            var dto = new CargarResultadoDTO
+            {
+                MarcadorLocal = 2,
+                MarcadorVisitante = 1 // Gana eqA
+            };
+
+            // Act - Cargar resultado de la Final
+            var result = await _partidoService.LoadResultadoAsync(finalMatch.Id, dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal("Finalizado", result.Estado);
+            Assert.Equal(eqA, result.GanadorId);
+
+            // Se debe haber actualizado el torneo pasando a Finalizado y declarando a eqA como Campeón
+            Assert.Equal(EstadoTorneo.Finalizado, torneo.Estado);
+            Assert.Equal(eqA, torneo.CampeonId);
+
+            _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.Is<Torneo>(t =>
+                t.Id == torneoId &&
+                t.Estado == EstadoTorneo.Finalizado &&
+                t.CampeonId == eqA
+            )), Times.Once);
         }
     }
 }

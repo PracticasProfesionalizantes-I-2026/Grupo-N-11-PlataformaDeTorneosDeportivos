@@ -28,6 +28,13 @@ namespace DataAccess.Repositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Equipo>> GetAllWithJugadoresAsync()
+        {
+            return await _dbSet
+                .Include(e => e.Jugadores)
+                .ToListAsync();
+        }
+
         public async Task<Equipo?> GetByIdWithTorneoAndJugadoresAsync(Guid id)
         {
             return await _dbSet

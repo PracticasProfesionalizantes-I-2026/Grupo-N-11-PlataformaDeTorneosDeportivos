@@ -72,13 +72,79 @@ namespace BusinessLogic.Tests
             Assert.Equal(RolUsuario.Veedor.ToString(), result.Rol);
             Assert.True(result.Activo);
             Assert.Contains(torneoId, result.TorneosAsignados);
+            Assert.False(string.IsNullOrWhiteSpace(result.PasswordTemporal));
+            Assert.True(result.RequiereCambioPassword);
 
             _usuarioRepositoryMock.Verify(r => r.AddAsync(It.Is<Usuario>(u =>
                 u.Nombre == "Roberto" &&
                 u.Dni == "33444555" &&
                 u.Rol == RolUsuario.Veedor &&
-                u.Activo == true
+                u.Activo == true &&
+                u.RequiereCambioPassword == true
             )), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateVeedorAsync_WithCustomPasswordInicial_UsesPasswordAndSetsRequiereCambio()
+        {
+            // Arrange
+            var dto = new VeedorCreateDTO
+            {
+                Nombre = "Mariana",
+                Apellido = "Veedora",
+                Dni = "34567890",
+                Email = "mariana@torneos.com",
+                PasswordInicial = "MiClaveSegura2026!"
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByEmailAsync("mariana@torneos.com"))
+                .ReturnsAsync((Usuario?)null);
+            _usuarioRepositoryMock.Setup(r => r.GetByDniAsync("34567890"))
+                .ReturnsAsync((Usuario?)null);
+            _usuarioRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Usuario>()))
+                .ReturnsAsync((Usuario u) => u);
+
+            // Act
+            var result = await _veedorService.CreateVeedorAsync(dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal("MiClaveSegura2026!", result.PasswordTemporal);
+            Assert.True(result.RequiereCambioPassword);
+
+            _passwordHasherMock.Verify(p => p.HashPassword("MiClaveSegura2026!"), Times.Once);
+            _usuarioRepositoryMock.Verify(r => r.AddAsync(It.Is<Usuario>(u =>
+                u.RequiereCambioPassword == true
+            )), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_DoesNotExposePasswordTemporal()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            var usuario = new Usuario
+            {
+                Id = id,
+                Nombre = "Veedor",
+                Apellido = "Prueba",
+                Dni = "33334444",
+                Email = "veedor.prueba@torneos.com",
+                Rol = RolUsuario.Veedor,
+                Activo = true,
+                RequiereCambioPassword = true
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByIdAsync(id))
+                .ReturnsAsync(usuario);
+
+            // Act
+            var result = await _veedorService.GetByIdAsync(id);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Null(result.PasswordTemporal);
+            Assert.True(result.RequiereCambioPassword);
         }
 
         [Fact]

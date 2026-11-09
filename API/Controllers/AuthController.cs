@@ -38,5 +38,19 @@ namespace API.Controllers
             var response = await _authService.ResetPasswordAsync(dto);
             return Ok(response);
         }
+
+        [HttpPost("cambiar-password")]
+        public async Task<IActionResult> CambiarPassword([FromBody] CambiarPasswordInicialDTO dto)
+        {
+            var response = await _authService.CambiarPasswordInicialAsync(dto);
+            return Ok(response);
+        }
+
+        [HttpPost("primer-ingreso")]
+        public async Task<IActionResult> PrimerIngreso([FromBody] CambiarPasswordInicialDTO dto)
+        {
+            var response = await _authService.CambiarPasswordInicialAsync(dto);
+            return Ok(response);
+        }
     }
 }

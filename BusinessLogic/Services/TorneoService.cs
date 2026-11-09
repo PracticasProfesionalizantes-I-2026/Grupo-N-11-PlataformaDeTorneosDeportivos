@@ -37,7 +37,7 @@ namespace BusinessLogic.Services
             if (id == Guid.Empty)
                 throw new ValidationException("El identificador del torneo no puede ser vacío.");
 
-            var torneo = await _torneoRepository.GetByIdAsync(id);
+            var torneo = await _torneoRepository.GetTorneoConEquiposAsync(id) ?? await _torneoRepository.GetByIdAsync(id);
             if (torneo == null)
                 throw new NotFoundException($"No se encontró el torneo con ID {id}");
 
@@ -563,12 +563,27 @@ namespace BusinessLogic.Services
                 });
             }
 
+            string? campeonNombre = null;
+            if (torneo.CampeonId.HasValue)
+            {
+                if (torneo.Campeon != null)
+                {
+                    campeonNombre = torneo.Campeon.Nombre;
+                }
+                else if (nombresEquipos.TryGetValue(torneo.CampeonId.Value, out var cn))
+                {
+                    campeonNombre = cn;
+                }
+            }
+
             return new BracketTorneoDTO
             {
                 TorneoId = torneo.Id,
                 TorneoNombre = torneo.Nombre,
                 TotalRondas = totalRondas,
-                Rondas = rondasDto
+                Rondas = rondasDto,
+                CampeonId = torneo.CampeonId,
+                CampeonNombre = campeonNombre
             };
         }
 
@@ -643,6 +658,12 @@ namespace BusinessLogic.Services
 
         private static TorneoResponseDTO MapToResponseDTO(Torneo torneo)
         {
+            string? campeonNombre = torneo.Campeon?.Nombre;
+            if (campeonNombre == null && torneo.CampeonId.HasValue && torneo.Equipos != null)
+            {
+                campeonNombre = torneo.Equipos.FirstOrDefault(e => e.Id == torneo.CampeonId.Value)?.Nombre;
+            }
+
             return new TorneoResponseDTO
             {
                 Id = torneo.Id,
@@ -652,7 +673,9 @@ namespace BusinessLogic.Services
                 CupoMaximo = torneo.CupoMaximo,
                 EsPago = torneo.EsPago,
                 CostoInscripcion = torneo.CostoInscripcion,
-                Estado = torneo.Estado.ToString()
+                Estado = torneo.Estado.ToString(),
+                CampeonId = torneo.CampeonId,
+                CampeonNombre = campeonNombre
             };
         }
     }

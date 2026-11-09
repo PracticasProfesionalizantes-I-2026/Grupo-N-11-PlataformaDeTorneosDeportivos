@@ -90,7 +90,8 @@ namespace BusinessLogic.Services
                 Expiration = expiration,
                 UsuarioId = usuario.Id,
                 NombreCompleto = $"{usuario.Nombre} {usuario.Apellido}".Trim(),
-                Rol = usuario.Rol.ToString()
+                Rol = usuario.Rol.ToString(),
+                RequiereCambioPassword = usuario.RequiereCambioPassword
             };
         }
 
@@ -164,12 +165,74 @@ namespace BusinessLogic.Services
             usuario.PasswordHash = _passwordHasher.HashPassword(dto.NewPassword);
             usuario.PasswordResetToken = null;
             usuario.PasswordResetTokenExpiration = null;
+            usuario.RequiereCambioPassword = false;
 
             await _usuarioRepository.UpdateAsync(usuario);
 
             return new ResetPasswordResponseDTO
             {
                 Mensaje = "Contraseña restablecida exitosamente."
+            };
+        }
+
+        public async Task<CambiarPasswordResponseDTO> CambiarPasswordInicialAsync(CambiarPasswordInicialDTO dto)
+        {
+            if (dto == null)
+            {
+                throw new ValidationException("Los datos de cambio de contraseña son obligatorios.");
+            }
+
+            var credential = dto.EmailOrDni?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(credential) || string.IsNullOrWhiteSpace(dto.PasswordActual) || string.IsNullOrWhiteSpace(dto.NuevaPassword))
+            {
+                throw new ValidationException("El correo/DNI, la contraseña actual y la nueva contraseña son obligatorios.");
+            }
+
+            if (dto.PasswordActual == dto.NuevaPassword)
+            {
+                throw new ValidationException("La nueva contraseña no puede ser idéntica a la contraseña provisoria o actual.");
+            }
+
+            if (dto.NuevaPassword.Length < 8 || dto.NuevaPassword.Length > 128 ||
+                !dto.NuevaPassword.Any(char.IsLetter) || !dto.NuevaPassword.Any(char.IsDigit))
+            {
+                throw new ValidationException("La nueva contraseña debe tener entre 8 y 128 caracteres e incluir letras y números.");
+            }
+
+            // Buscar usuario por Email o DNI
+            var usuario = await _usuarioRepository.GetByEmailOrDniAsync(credential);
+            if (usuario == null)
+            {
+                throw new UnauthorizedException("Usuario o contraseña incorrectos.");
+            }
+
+            if (!usuario.Activo)
+            {
+                throw new ForbiddenException("Cuenta no verificada o inhabilitada. Verifique su correo o contacte al administrador.");
+            }
+
+            // Validar contraseña actual
+            bool passwordValida = _passwordHasher.VerifyPassword(dto.PasswordActual, usuario.PasswordHash);
+            if (!passwordValida)
+            {
+                throw new UnauthorizedException("La contraseña actual es incorrecta.");
+            }
+
+            // Actualizar contraseña y desactivar bandera de cambio obligatorio
+            usuario.PasswordHash = _passwordHasher.HashPassword(dto.NuevaPassword);
+            usuario.RequiereCambioPassword = false;
+
+            await _usuarioRepository.UpdateAsync(usuario);
+
+            // Generar nuevo token para sesión inmediata
+            var expiration = DateTime.UtcNow.AddHours(4);
+            var token = GenerarJwtToken(usuario, expiration);
+
+            return new CambiarPasswordResponseDTO
+            {
+                Exito = true,
+                Mensaje = "Contraseña actualizada exitosamente. Ya puede iniciar sesión con su nueva clave.",
+                Token = token
             };
         }
 

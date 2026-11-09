@@ -17,13 +17,18 @@ namespace BusinessLogic.Tests
     {
         private readonly Mock<ITorneoRepository> _torneoRepositoryMock;
         private readonly Mock<IPartidoRepository> _partidoRepositoryMock;
+        private readonly Mock<IUnitOfWork> _unitOfWorkMock;
         private readonly FixtureService _fixtureService;
 
         public FixtureServiceTests()
         {
             _torneoRepositoryMock = new Mock<ITorneoRepository>();
             _partidoRepositoryMock = new Mock<IPartidoRepository>();
-            _fixtureService = new FixtureService(_torneoRepositoryMock.Object, _partidoRepositoryMock.Object);
+            _unitOfWorkMock = new Mock<IUnitOfWork>();
+            _fixtureService = new FixtureService(
+                _torneoRepositoryMock.Object,
+                _partidoRepositoryMock.Object,
+                _unitOfWorkMock.Object);
         }
 
         [Fact]
@@ -628,6 +633,49 @@ namespace BusinessLogic.Tests
 
             _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
             _partidoRepositoryMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GenerarFixtureAsync_WhenErrorOccursDuringPersistence_ExecutesRollbackAndDoesNotCommit()
+        {
+            // Arrange
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Transaccional",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                Estado = EstadoTorneo.Abierto,
+                Equipos = new List<Equipo>
+                {
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo A", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo B", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo C", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo D", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId }
+                }
+            };
+
+            var dto = new GenerarFixtureRequestDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(2),
+                Horarios = new List<string> { "14:00" },
+                Sedes = new List<string> { "Sede 1" }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync(torneo);
+            _torneoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Torneo>()))
+                .ThrowsAsync(new InvalidOperationException("Fallo inducido en base de datos al actualizar estado del torneo"));
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
+            Assert.Contains("Fallo inducido", ex.Message);
+
+            // Verificaciones ACID
+            _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(default), Times.Once);
+            _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(default), Times.Once);
+            _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(default), Times.Never);
         }
 
         #endregion

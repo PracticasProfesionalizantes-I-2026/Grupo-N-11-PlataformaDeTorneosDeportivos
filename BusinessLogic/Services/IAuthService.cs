@@ -8,5 +8,6 @@ namespace BusinessLogic.Services
         Task<LoginResponseDTO> LoginAsync(LoginRequestDTO dto);
         Task<RecuperarPasswordResponseDTO> RecoverPasswordAsync(RecuperarPasswordRequestDTO dto);
         Task<ResetPasswordResponseDTO> ResetPasswordAsync(ResetPasswordRequestDTO dto);
+        Task<CambiarPasswordResponseDTO> CambiarPasswordInicialAsync(CambiarPasswordInicialDTO dto);
     }
 }

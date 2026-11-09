@@ -1,0 +1,35 @@
+meta {
+  name: CU-06 - Validar Pago y Comprobante de Equipo (200)
+  type: http
+  seq: 71
+}
+
+patch {
+  url: {{baseUrl}}/torneos/{{torneoId}}/equipos/{{equipoId}}/validar-pago
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtToken}}
+}
+
+body:json {
+  {
+    "comprobanteUrl": "https://comprobantes.com/transferencia_valida.pdf"
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("PagoValidado is true", function() {
+    expect(res.getBody().pagoValidado).to.equal(true);
+  });
+}
+

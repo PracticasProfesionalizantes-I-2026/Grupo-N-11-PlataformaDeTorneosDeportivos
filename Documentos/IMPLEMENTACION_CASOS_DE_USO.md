@@ -61,30 +61,35 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
 
 ### CU-01: Registrarse en la plataforma (Crear cuenta)
 
-* **Descripción:** Permite a un nuevo usuario (Organizador, Capitán, Veedor o Espectador) darse de alta en el sistema suministrando sus datos personales y credenciales.
+* **Descripción:** Permite a un nuevo usuario darse de alta en el sistema suministrando sus datos personales y credenciales. Por diseño de seguridad y prevención de escalada de privilegios (RNF-04), el registro público fuerza estrictamente el rol base (`Capitan` / `Espectador`), neutralizando cualquier inyección de roles elevados (`Administrador`, `Organizador`, `Veedor`). La creación o asignación de roles privilegiados se reserva a endpoints administrativos protegidos.
 * **Actor Principal:** Usuario No Autenticado.
 * **Reglas de Negocio:**
   - **RN-10:** El DNI y el Email son de carácter único en toda la base de datos.
+  - **Prevención de Escalada de Privilegios (RNF-04):** En el registro público (`POST /api/usuarios/registro` y `POST /api/auth/register`), el sistema fuerza el rol base (`Capitan`), bloqueando cualquier intento de autoproclamación como `Administrador`, `Organizador` o `Veedor`. La creación de cuentas con roles elevados o la modificación de roles se encuentra restringida a administradores/organizadores autenticados (`POST /api/usuarios/admin`, `PUT /api/usuarios/{id}/rol` y `POST /api/veedores`).
   - La contraseña debe cumplir requisitos mínimos de seguridad (mínimo 8 caracteres, al menos un número y una letra).
-  - La contraseña se almacena de forma segura mediante hash criptográfico (BCrypt/PBKDF2 a través de `IPasswordHasher`).
+  - La contraseña se almacena de forma segura mediante hash criptográfico (PBKDF2 a través de `IPasswordHasher`).
 
 #### Componentes de Implementación:
-- **Controlador API:** [UsuariosController.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/UsuariosController.cs)
-  - Endpoint: `POST /api/usuarios/registro`
-  - Códigos de Respuesta: `201 Created`, `400 Bad Request`, `409 Conflict`.
+- **Controlador API:** [UsuariosController.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/UsuariosController.cs)
+  - Endpoints:
+    - `POST /api/usuarios/registro` y `POST /api/auth/register` (Público, rol base forzado)
+    - `GET /api/usuarios/{id}` (Protegido `[Authorize(Roles = "Administrador,Organizador")]`)
+    - `POST /api/usuarios/admin` (Protegido `[Authorize(Roles = "Administrador,Organizador")]`)
+    - `PUT /api/usuarios/{id}/rol` (Protegido `[Authorize(Roles = "Administrador,Organizador")]`)
+  - Códigos de Respuesta: `200 OK`, `201 Created`, `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `409 Conflict`.
 - **Capa BusinessLogic:**
-  - Interfaz: [IUsuarioService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IUsuarioService.cs)
-  - Servicio: [UsuarioService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/UsuarioService.cs)
-  - Hasher de Seguridad: [IPasswordHasher.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Security/IPasswordHasher.cs)
+  - Interfaz: [IUsuarioService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IUsuarioService.cs)
+  - Servicio: [UsuarioService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/UsuarioService.cs)
+  - Hasher de Seguridad: [IPasswordHasher.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Security/IPasswordHasher.cs)
 - **Capa DataAccess:**
-  - Repositorio: [IUsuarioRepository.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Repositories/IUsuarioRepository.cs)
-  - Entidad: [Usuario.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Entities/Usuario.cs)
+  - Repositorio: [IUsuarioRepository.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Repositories/IUsuarioRepository.cs)
+  - Entidad: [Usuario.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Entities/Usuario.cs)
 - **Contratos (Shared):**
-  - DTOs: `UsuarioRegistroDTO`, `UsuarioResponseDTO`.
-  - Excepciones: `ValidationException`, `BusinessRuleConflictException`.
+  - DTOs: `UsuarioRegistroDTO`, `UsuarioResponseDTO`, `CambiarRolDTO`.
+  - Excepciones: `ValidationException`, `UsuarioDuplicadoException`, `ForbiddenException`, `NotFoundException`.
 - **Pruebas Automatizadas:**
-  - Unitarias: `UsuarioServiceTests.cs` (Validación de contraseña, DNI/Email duplicado).
-  - Integración: `UsuariosIntegrationTests.cs`.
+  - Unitarias: `UsuarioServiceTests.cs` (Validación de contraseña, DNI/Email duplicado, forzado de rol base Capitan, validación de permisos en creación/cambio de rol).
+  - Integración: `UsuariosIntegrationTests.cs` (Neutralización de escalada en `/api/usuarios/registro` y `/api/auth/register`, bloqueo 401/403 a no administradores, asignación legítima 201/200 por Administrador).
   - Archivos Bruno: `CU01_Registro_400_Invalido.bru`, `CU01_Registro_409_Duplicado.bru`, `RegistroUsuario.bru`.
 
 ---
@@ -183,26 +188,32 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
 * **Reglas de Negocio:**
   - **RN-02:** Un jugador (identificado por su DNI) no puede encontrarse inscripto en más de un equipo dentro del mismo torneo.
   - **RN-03:** Al enviar la inscripción, el equipo queda en estado `PendienteDeValidacion` y se bloquea la edición (`EdicionListaHabilitada = false`).
+  - **Prevención de Vulnerabilidad IDOR y Control de Titularidad:** La entidad `Equipo` cuenta con clave foránea hacia `Usuario` (`CapitanId` / `Usuario? Capitan`) configurada con `DeleteBehavior.Restrict`. En los endpoints `POST /api/torneos/{torneoId}/equipos`, `POST /api/equipos/{equipoId}/jugadores` y `DELETE /api/jugadores/{id}`, la Capa de Presentación extrae los claims `ClaimTypes.NameIdentifier` y `ClaimTypes.Role`, delegando la verificación a la Capa de Negocio (`JugadorService` y `EquipoService`). Si un Capitán intenta agregar/eliminar jugadores en un equipo ajeno o registrar un equipo suplantando a otro capitán, se lanza `ForbiddenException` (`403 Forbidden`). Se reserva el bypass administrativo para usuarios con rol `Organizador` o `Administrador`.
+  - **RNF-04 (Privacidad y Protección de Datos Personales - PII):** En las consultas públicas (`GET /api/equipos`, `GET /api/torneos/{torneoId}/equipos`, `GET /api/equipos/{id}`, `GET /api/equipos/{equipoId}/jugadores`), los jugadores se exponen a través de `JugadorPublicResponseDTO` (y `EquipoPublicResponseDTO`), excluyendo estrictamente su `Dni` y `DocumentacionUrl`. El acceso a la nómina completa y sensible queda restringido a usuarios autenticados con rol `Organizador`/`Administrador` o al `Capitan` del equipo correspondiente (`GET /api/equipos/{id}/nomina-completa`).
   - No se admiten DNIs duplicados dentro de la misma lista de envío.
   - Se valida el mínimo reglamentario de jugadores según la disciplina del torneo (ej. Fútbol: mínimo 5; Básquetbol: mínimo 5; Voleibol: mínimo 6; E-Sports: mínimo 3).
   - El torneo debe encontrarse en estado `EstadoTorneo.Abierto`.
 
 #### Componentes de Implementación:
-- **Controlador API:** [EquiposController.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/EquiposController.cs)
-  - Endpoint: `POST /api/torneos/{torneoId}/equipos`
-  - Códigos de Respuesta: `201 Created`, `400 Bad Request`, `404 Not Found`, `409 Conflict`, `422 Unprocessable Entity`.
+- **Controlador API:** [EquiposController.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/EquiposController.cs) y [JugadoresController.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/JugadoresController.cs)
+  - Endpoints:
+    - `POST /api/torneos/{torneoId}/equipos` (Inscripción de equipo y lista)
+    - `GET /api/equipos` y `GET /api/equipos/{id}` (Consulta pública con `EquipoPublicResponseDTO`)
+    - `GET /api/equipos/{id}/nomina-completa` y `GET /api/equipos/{id}/admin` (Nómina completa protegida con `[Authorize]`)
+    - `GET /api/equipos/{equipoId}/jugadores` y `GET /api/equipos/{equipoId}/jugadores/nomina-completa`
+  - Códigos de Respuesta: `200 OK`, `201 Created`, `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `409 Conflict`, `422 Unprocessable Entity`.
 - **Capa BusinessLogic:**
-  - Interfaz: [IEquipoService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IEquipoService.cs)
-  - Servicio: [EquipoService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/EquipoService.cs)
+  - Interfaz: [IEquipoService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IEquipoService.cs), [IJugadorService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IJugadorService.cs)
+  - Servicio: [EquipoService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/EquipoService.cs), [JugadorService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/JugadorService.cs)
 - **Capa DataAccess:**
-  - Repositorios: [IEquipoRepository.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Repositories/IEquipoRepository.cs), [IJugadorRepository.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Repositories/IJugadorRepository.cs).
-  - Entidades: [Equipo.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Entities/Equipo.cs), [Jugador.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Entities/Jugador.cs).
+  - Repositorios: [IEquipoRepository.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Repositories/IEquipoRepository.cs), [IJugadorRepository.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Repositories/IJugadorRepository.cs).
+  - Entidades: [Equipo.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Entities/Equipo.cs), [Jugador.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Entities/Jugador.cs).
 - **Contratos (Shared):**
-  - DTOs: `EquipoCreateDTO`, `JugadorCreateDTO`, `EquipoResponseDTO`.
-  - Excepciones: `JugadorYaInscriptoException` (409), `TorneoInscripcionCerradaException` (409), `EquipoNombreDuplicadoException` (409), `TorneoCupoLlenoException` (409), `MinimoJugadoresInsuficienteException` (422).
+  - DTOs: `EquipoCreateDTO`, `EquipoResponseDTO`, `EquipoPublicResponseDTO`, `JugadorCreateDTO`, `JugadorResponseDTO`, `JugadorPublicResponseDTO`.
+  - Excepciones: `JugadorYaInscriptoException` (409), `TorneoInscripcionCerradaException` (409), `EquipoNombreDuplicadoException` (409), `TorneoCupoLlenoException` (409), `MinimoJugadoresInsuficienteException` (422), `ForbiddenException` (403).
 - **Pruebas Automatizadas:**
-  - Unitarias: `EquipoServiceTests.cs`.
-  - Integración: `EquiposIntegrationTests.cs`.
+  - Unitarias: `EquipoServiceTests.cs`, `JugadorServiceTests.cs`.
+  - Integración: `EquiposIntegrationTests.cs`, `JugadoresIntegrationTests.cs`.
   - Archivos Bruno: `CU05_CreateEquipo_400_DniDuplicado.bru`, `CU05_CreateEquipo_409_CupoLleno.bru`, `CU05_CreateEquipo_409_JugadorYaInscripto.bru`, `CU05_CreateEquipo_409_TorneoCerrado.bru`, `CU05_CreateEquipo_422_MinimoJugadores.bru`, `CreateEquipo.bru`.
 
 ---
@@ -212,50 +223,59 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
 * **Descripción:** Permite al Administrador/Organizador evaluar la documentación y pagos de un equipo, aprobando su inclusión definitiva o rechazándola con observaciones para corrección.
 * **Actor Principal:** Organizador / Administrador.
 * **Reglas de Negocio:**
-  - **RN-06:** No se puede marcar a un equipo como `InscritoYConfirmado` si no acredita comprobante de pago válido en torneos pagos, o si el torneo ya completó su cupo máximo (`confirmados >= torneo.CupoMaximo`).
+  - **RN-05 / RN-06:** No se puede marcar a un equipo como `InscritoYConfirmado` si no acredita comprobante de pago válido (`ComprobanteUrl` no vacío y persistido) y validado por el Organizador (`PagoValidado = true`) en torneos pagos, o si el torneo ya completó su cupo máximo (`confirmados >= torneo.CupoMaximo`).
   - Solo pueden dictaminarse equipos que estén en estado `PendienteDeValidacion`.
   - **RN-03:** Si la inscripción es rechazada u observada (`RechazadoObservado`), el sistema desbloquea la edición (`EdicionListaHabilitada = true`) para permitir al capitán subsanar la nómina.
+  - El Organizador puede validar la acreditación de pagos de un equipo mediante `PATCH /api/torneos/{torneoId}/equipos/{equipoId}/validar-pago` o `PATCH /api/equipos/{id}/validar-pago`, actualizando `PagoValidado = true`.
 
 #### Componentes de Implementación:
-- **Controlador API:** [InscripcionesController.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/InscripcionesController.cs)
+- **Controlador API:** [InscripcionesController.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/InscripcionesController.cs) y [EquiposController.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/EquiposController.cs)
   - Endpoints:
     - `PATCH /api/torneos/{torneoId}/equipos/{equipoId}/aprobar`
     - `PATCH /api/torneos/{torneoId}/equipos/{equipoId}/rechazar`
+    - `PATCH /api/torneos/{torneoId}/equipos/{equipoId}/validar-pago`
+    - `PATCH /api/equipos/{id}/validar-pago`
+    - `PUT /api/equipos/{id}/estado` (Máquina de estados estricta centralizada en `InscripcionService`)
   - Códigos de Respuesta: `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict`, `422 Unprocessable Entity`.
 - **Capa BusinessLogic:**
-  - Interfaz: [IInscripcionService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IInscripcionService.cs)
-  - Servicio: [InscripcionService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/InscripcionService.cs)
+  - Interfaz: [IInscripcionService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IInscripcionService.cs)
+  - Servicio: [InscripcionService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/InscripcionService.cs)
+  - Delegación: [EquipoService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/EquipoService.cs) delega las transiciones de estado a `_inscripcionService.CambiarEstadoEquipoAsync` y persiste `ComprobanteUrl`.
 - **Contratos (Shared):**
-  - DTOs: `AprobarInscripcionResponseDTO`, `RechazarInscripcionDTO`, `RechazarInscripcionResponseDTO`.
-  - Excepciones: `TorneoCupoLlenoException` (409), `EstadoEquipoInvalidoException` (409), `PagoRequeridoException` (422), `RecursoNotFoundException` (404).
+  - DTOs: `AprobarInscripcionResponseDTO`, `RechazarInscripcionDTO`, `RechazarInscripcionResponseDTO`, `EquipoCreateDTO`, `EquipoUpdateDTO`, `EquipoResponseDTO`, `ValidarPagoDTO`, `ValidarPagoResponseDTO`.
+  - Excepciones: `TorneoCupoLlenoException` (409), `EstadoEquipoInvalidoException` (409), `PagoRequeridoException` (422), `RecursoNotFoundException` (404), `BusinessRuleConflictException` (409).
 - **Pruebas Automatizadas:**
-  - Unitarias: `InscripcionServiceTests.cs`.
-  - Integración: `InscripcionesIntegrationTests.cs`.
-  - Archivos Bruno: `CU06_AprobarInscripcion_409_CupoLleno.bru`, `CU06_AprobarInscripcion_422_SinPago.bru`, `CU06_RechazarInscripcion_400_SinMotivo.bru`, `AprobarInscripcion.bru`, `RechazarInscripcion.bru`.
+  - Unitarias: `InscripcionServiceTests.cs`, `EquipoServiceTests.cs`.
+  - Integración: `InscripcionesIntegrationTests.cs`, `EquiposIntegrationTests.cs`.
+  - Archivos Bruno: `CU06_AprobarInscripcion_409_CupoLleno.bru`, `CU06_AprobarInscripcion_422_SinPago.bru`, `CU06_ValidarPago_200.bru`, `CU06_RechazarInscripcion_400_SinMotivo.bru`, `AprobarInscripcion.bru`, `RechazarInscripcion.bru`.
 
 ---
 
 ### CU-07: Crear y gestionar usuarios con rol de Veedor
 
-* **Descripción:** Permite al Organizador crear, actualizar datos o dar de baja lógica cuentas de veedores/árbitros para la fiscalización de partidos.
+* **Descripción:** Permite al Organizador crear, actualizar datos o dar de baja lógica cuentas de veedores/árbitros para la fiscalización de partidos, con entrega de contraseña provisoria y cambio obligatorio en el primer inicio de sesión.
 * **Actor Principal:** Organizador / Administrador.
 * **Reglas de Negocio:**
   - El veedor se crea con rol `RolUsuario.Veedor`.
   - Validación de unicidad de DNI y Email (RN-10).
+  - Al crearse, se puede suministrar una `PasswordInicial` o se genera automáticamente una contraseña provisoria segura.
+  - La respuesta de creación (`VeedorResponseDTO`) entrega la `PasswordTemporal` generada y la bandera `RequiereCambioPassword = true`.
+  - En consultas posteriores (`GET /api/veedores/{id}`, listados o actualizaciones), `PasswordTemporal` se mantiene oculta (`null`) por seguridad.
+  - Al iniciar sesión con la clave provisoria, el sistema informa `RequiereCambioPassword = true`. El usuario debe completar el cambio obligatorio mediante `POST /api/auth/cambiar-password` o `POST /api/auth/primer-ingreso` antes de operar.
   - La baja es un borrado lógico (`Activo = false`), revocando permisos de carga de planillas de forma inmediata.
 
 #### Componentes de Implementación:
-- **Controlador API:** [VeedoresController.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/VeedoresController.cs)
-  - Endpoints: `GET /api/veedores`, `GET /api/veedores/{id}`, `POST /api/veedores`, `PUT /api/veedores/{id}`, `DELETE /api/veedores/{id}`.
-  - Códigos de Respuesta: `200 OK`, `201 Created`, `204 NoContent`, `400 Bad Request`, `404 Not Found`, `409 Conflict`.
+- **Controlador API:** [VeedoresController.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/VeedoresController.cs) / [AuthController.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/AuthController.cs)
+  - Endpoints: `GET /api/veedores`, `GET /api/veedores/{id}`, `POST /api/veedores`, `PUT /api/veedores/{id}`, `DELETE /api/veedores/{id}`, `POST /api/auth/cambiar-password`, `POST /api/auth/primer-ingreso`.
+  - Códigos de Respuesta: `200 OK`, `201 Created`, `204 NoContent`, `400 Bad Request`, `401 Unauthorized`, `404 Not Found`, `409 Conflict`.
 - **Capa BusinessLogic:**
-  - Interfaz: [IVeedorService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IVeedorService.cs)
-  - Servicio: [VeedorService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/VeedorService.cs)
+  - Interfaz: [IVeedorService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IVeedorService.cs) / [IAuthService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IAuthService.cs)
+  - Servicio: [VeedorService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/VeedorService.cs) / [AuthService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/AuthService.cs)
 - **Contratos (Shared):**
-  - DTOs: `VeedorCreateDTO`, `VeedorUpdateDTO`, `VeedorResponseDTO`.
+  - DTOs: `VeedorCreateDTO`, `VeedorUpdateDTO`, `VeedorResponseDTO`, `CambiarPasswordInicialDTO`, `CambiarPasswordResponseDTO`, `LoginResponseDTO`.
 - **Pruebas Automatizadas:**
-  - Unitarias: `VeedorServiceTests.cs`.
-  - Integración: `VeedoresIntegrationTests.cs`.
+  - Unitarias: `VeedorServiceTests.cs`, `AuthServiceTests.cs`.
+  - Integración: `VeedoresIntegrationTests.cs`, `AuthIntegrationTests.cs`.
   - Archivos Bruno: `CU07_CreateVeedor_400_DatosIncompletos.bru`, `CU07_CreateVeedor_409_Duplicado.bru`, `CreateVeedor.bru`, `UpdateVeedor.bru`, `DeactivateVeedor.bru`.
 
 ---
@@ -316,26 +336,28 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
 
 ### CU-10: Cargar resultados básicos del partido
 
-* **Descripción:** Permite al veedor u organizador cargar el marcador final (goles/puntos) de un partido.
+* **Descripción:** Permite al veedor u organizador cargar el marcador final (goles/puntos) de un partido, gestionando el avance automático de llaves en eliminación directa y la coronación del campeón.
 * **Actor Principal:** Veedor / Organizador.
 * **Reglas de Negocio:**
   - El partido debe encontrarse en estado `Pendiente` o `EnProgreso`.
   - Los marcadores deben ser números enteros no negativos (`>= 0`).
-  - En torneos de Eliminación Directa no se permiten empates; debe existir un ganador registrado.
-  - Al cargar el resultado, el estado pasa a `Finalizado`.
+  - En torneos de Eliminación Directa no se permiten empates; debe existir un ganador registrado (mediante marcador o penales/desempate).
+  - Al cargar el resultado, el estado del partido pasa a `Finalizado`.
+  - **Avance de Rondas (RF-04):** En torneos de `Modalidad.EliminacionDirecta`, al completarse ambos partidos de un cruce en la ronda actual (ej. Semifinales), el sistema programa automáticamente el partido de la siguiente ronda (ej. Final) emparejando a los ganadores en estado `Pendiente`.
+  - **Coronación y Cierre de Torneo:** Al finalizar el partido de la Final, el sistema proclama al ganador como Campeón (`torneo.CampeonId = ganadorId`), transiciona el torneo a `EstadoTorneo.Finalizado` y persiste la operación atómicamente con `IUnitOfWork`.
 
 #### Componentes de Implementación:
-- **Controlador API:** [PartidosController.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/PartidosController.cs)
+- **Controlador API:** [PartidosController.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/PartidosController.cs)
   - Endpoint: `PUT /api/partidos/{id}/resultado`
   - Códigos de Respuesta: `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict`.
 - **Capa BusinessLogic:**
-  - Interfaz: [IPartidoService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IPartidoService.cs)
-  - Servicio: [PartidoService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/PartidoService.cs)
+  - Interfaz: [IPartidoService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/IPartidoService.cs)
+  - Servicio: [PartidoService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/PartidoService.cs)
 - **Contratos (Shared):**
-  - DTOs: `CargarResultadoDTO`, `PartidoResponseDTO`.
+  - DTOs: `CargarResultadoDTO`, `PartidoResultadoResponseDTO`, `BracketTorneoDTO`, `TorneoResponseDTO`.
 - **Pruebas Automatizadas:**
   - Unitarias: `PartidoServiceTests.cs`.
-  - Integración: `PartidosIntegrationTests.cs`.
+  - Integración: `PartidosIntegrationTests.cs`, `EliminacionDirectaAvanceLlavesIntegrationTests.cs`.
   - Archivos Bruno: `CU10_LoadResultado_200_Exitoso.bru`, `CU10_LoadResultado_400_MarcadorNegativo.bru`, `CU10_LoadResultado_409_EmpateEliminatoria.bru`.
 
 ---
@@ -490,7 +512,7 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
 
 ## 5. Estado y Cobertura de las Pruebas
 
-Toda la solución se valida con una suite integral de **406 pruebas automatizadas** que corren en integración continua:
-- **`BusinessLogic.Tests`**: 146 pruebas unitarias completas bajo el patrón Arrange-Act-Assert con `Moq`, incluyendo auditoría y fuzzing adversarial (`RedTeamFuzzingServiceTests.cs`).
-- **`API.IntegrationTests`**: 260 pruebas de integración con servidor en memoria `CustomWebApplicationFactory<Program>`, SQLite y deserialización JSON, incluyendo batería adversarial de casos borde (`AdversarialCasosDeUsoIntegrationTests.cs`) y suite de validaciones exhaustivas (`ValidacionesExhaustivasIntegrationTests.cs`).
-- **Colección Bruno (`bruno/`)**: 73 archivos de pruebas `.bru` que cubren escenarios exitosos (200, 201) y todas las ramas de error (400, 401, 403, 404, 409, 422).
+Toda la solución se valida con una suite integral de **497 pruebas automatizadas** que corren en integración continua:
+- **`BusinessLogic.Tests`**: 197 pruebas unitarias completas bajo el patrón Arrange-Act-Assert con `Moq`, incluyendo auditoría y fuzzing adversarial (`RedTeamFuzzingServiceTests.cs`), propagación de concurrencia optimista (`InscripcionServiceTests.cs`), validación de RN-03/CU-05 en listas de jugadores y mitigación IDOR con titularidad (`JugadorServiceTests.cs`), comportamiento transaccional ACID con Rollback (`FixtureServiceTests.cs` e `InscripcionServiceTests.cs`), titularidad de equipos y protección PII de jugadores RNF-04 (`EquipoServiceTests.cs`) y prevención de escalada de privilegios CU-01 / RNF-04 (`UsuarioServiceTests.cs`).
+- **`API.IntegrationTests`**: 300 pruebas de integración con servidor en memoria `CustomWebApplicationFactory<Program>`, SQLite y deserialización JSON, incluyendo batería adversarial (`AdversarialCasosDeUsoIntegrationTests.cs`), validaciones exhaustivas de entrada (`ValidacionesExhaustivasIntegrationTests.cs`), control de concurrencia optimista (`TorneoConcurrenciaOptimistaIntegrationTests.cs`), control de lista de buena fe y bloqueo de vectores IDOR en modificación/eliminación (`JugadoresIntegrationTests.cs`), transacciones atómicas reales sobre SQLite (`TransaccionesAcidIntegrationTests.cs`), acreditación legítima de pagos CU-06 (`InscripcionesIntegrationTests.cs`), privacidad PII RNF-04 (`EquiposIntegrationTests.cs`) y neutralización de escalada de privilegios en endpoints públicos y protegidos CU-01 (`UsuariosIntegrationTests.cs`).
+- **Colección Bruno (`bruno/`)**: 74 archivos de pruebas `.bru` que cubren escenarios exitosos (200, 201) y todas las ramas de error (400, 401, 403, 404, 409, 422).

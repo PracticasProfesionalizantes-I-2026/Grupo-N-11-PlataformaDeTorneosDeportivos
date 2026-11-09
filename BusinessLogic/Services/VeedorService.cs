@@ -27,8 +27,13 @@ namespace BusinessLogic.Services
             _partidoRepository = partidoRepository;
         }
 
-        public async Task<VeedorResponseDTO> CreateVeedorAsync(VeedorCreateDTO dto)
+        public async Task<VeedorResponseDTO> CreateVeedorAsync(VeedorCreateDTO dto, string? rolSolicitante = null)
         {
+            if (rolSolicitante != null && rolSolicitante != "Organizador" && rolSolicitante != "Administrador")
+            {
+                throw new ForbiddenException("No tiene permisos para dar de alta veedores.");
+            }
+
             if (dto == null)
             {
                 throw new ValidationException("Los datos del veedor son obligatorios.");
@@ -122,8 +127,22 @@ namespace BusinessLogic.Services
                 throw new BusinessRuleConflictException("El DNI o Email ya están registrados en el sistema");
             }
 
-            // Generar contraseña inicial automática y hashearla
-            var tempPassword = $"Veedor_{Guid.NewGuid():N}".Substring(0, 10) + "!";
+            // Generar contraseña inicial automática o usar la provista
+            string tempPassword;
+            if (!string.IsNullOrWhiteSpace(dto.PasswordInicial))
+            {
+                var pwd = dto.PasswordInicial.Trim();
+                if (pwd.Length < 8 || pwd.Length > 128 || !System.Text.RegularExpressions.Regex.IsMatch(pwd, @"^(?=.*[a-zA-Z])(?=.*\d).+$"))
+                {
+                    throw new ValidationException("La contraseña inicial debe tener entre 8 y 128 caracteres y contener al menos una letra y un número.");
+                }
+                tempPassword = pwd;
+            }
+            else
+            {
+                tempPassword = $"Veedor_{Guid.NewGuid():N}".Substring(0, 10) + "1A!";
+            }
+
             var passwordHash = _passwordHasher.HashPassword(tempPassword);
 
             var usuario = new Usuario
@@ -137,6 +156,7 @@ namespace BusinessLogic.Services
                 PasswordHash = passwordHash,
                 Rol = RolUsuario.Veedor,
                 Activo = true,
+                RequiereCambioPassword = true,
                 SedeAsignada = dto.SedeAsignada?.Trim(),
                 TorneosAsignadosIds = dto.TorneosAsignados != null && dto.TorneosAsignados.Any()
                     ? string.Join(",", dto.TorneosAsignados)
@@ -146,7 +166,10 @@ namespace BusinessLogic.Services
 
             await _usuarioRepository.AddAsync(usuario);
 
-            return MapToResponseDTO(usuario);
+            var response = MapToResponseDTO(usuario);
+            response.PasswordTemporal = tempPassword;
+            response.RequiereCambioPassword = true;
+            return response;
         }
 
         public async Task<VeedorResponseDTO> UpdateVeedorAsync(Guid id, VeedorUpdateDTO dto)
@@ -374,7 +397,9 @@ namespace BusinessLogic.Services
                 Activo = usuario.Activo,
                 TorneosAsignados = torneos,
                 SedeAsignada = usuario.SedeAsignada,
-                FechaCreacion = usuario.FechaCreacion
+                FechaCreacion = usuario.FechaCreacion,
+                PasswordTemporal = null,
+                RequiereCambioPassword = usuario.RequiereCambioPassword
             };
         }
     }

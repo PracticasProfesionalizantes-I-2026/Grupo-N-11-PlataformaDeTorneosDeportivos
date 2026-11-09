@@ -33,6 +33,8 @@ namespace Shared.DTOs
         public string TorneoNombre { get; set; } = string.Empty;
         public int TotalRondas { get; set; }
         public List<RondaBracketDTO> Rondas { get; set; } = new();
+        public Guid? CampeonId { get; set; }
+        public string? CampeonNombre { get; set; }
     }
 
     public class RondaBracketDTO

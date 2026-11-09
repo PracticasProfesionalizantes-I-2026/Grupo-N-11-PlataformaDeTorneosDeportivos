@@ -38,7 +38,8 @@ namespace API.Controllers
         [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> CreateVeedor([FromBody] VeedorCreateDTO dto)
         {
-            var result = await _veedorService.CreateVeedorAsync(dto);
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var result = await _veedorService.CreateVeedorAsync(dto, roleClaim);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
 

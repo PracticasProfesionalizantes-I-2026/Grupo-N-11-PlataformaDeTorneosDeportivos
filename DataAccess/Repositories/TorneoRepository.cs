@@ -14,13 +14,18 @@ namespace DataAccess.Repositories
 
         public async Task<IEnumerable<Torneo>> GetTorneosConEquiposAsync()
         {
-            return await _dbSet.Include(t => t.Equipos).AsNoTracking().ToListAsync();
+            return await _dbSet
+                .Include(t => t.Equipos)
+                .Include(t => t.Campeon)
+                .AsNoTracking()
+                .ToListAsync();
         }
 
         public async Task<Torneo?> GetTorneoConEquiposAsync(System.Guid id)
         {
             return await _dbSet
                 .Include(t => t.Equipos)
+                .Include(t => t.Campeon)
                 .Include(t => t.Partidos)
                     .ThenInclude(p => p.EquipoLocal)
                 .Include(t => t.Partidos)

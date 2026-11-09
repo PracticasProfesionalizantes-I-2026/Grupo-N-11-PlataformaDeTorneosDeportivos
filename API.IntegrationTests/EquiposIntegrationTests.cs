@@ -481,6 +481,443 @@ namespace API.IntegrationTests
             // Assert - Debe responder 403 Forbidden (no permitido a Veedores)
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
+
+        [Fact]
+        public async Task CambiarEstado_TorneoPagoSinPagoValidado_Retorna422UnprocessableEntity()
+        {
+            // Arrange - Torneo pago
+            var torneo = new Torneo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Torneo Pago {Guid.NewGuid():N}",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 10,
+                EsPago = true,
+                CostoInscripcion = 2000m,
+                Estado = EstadoTorneo.Abierto
+            };
+
+            var equipo = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Equipo Impago {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                PagoValidado = false,
+                EdicionListaHabilitada = true
+            };
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Torneos.Add(torneo);
+                db.Equipos.Add(equipo);
+                db.Jugadores.Add(new Jugador
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Carlos",
+                    Apellido = "Tevez",
+                    Dni = $"{Random.Shared.Next(10000000, 99999999)}",
+                    EquipoId = equipo.Id
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Act - Intentar pasar a InscritoYConfirmado sin pago validado
+            var response = await _client.PutAsJsonAsync($"/api/equipos/{equipo.Id}/estado", "InscritoYConfirmado");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task CambiarEstado_TorneoLleno_Retorna409Conflict()
+        {
+            // Arrange - Torneo con cupo 2 ya lleno
+            var torneo = new Torneo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Torneo Lleno {Guid.NewGuid():N}",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 2,
+                EsPago = false,
+                CostoInscripcion = 0m,
+                Estado = EstadoTorneo.Abierto
+            };
+
+            var eq1 = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Eq1 {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+            };
+            var eq2 = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Eq2 {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+            };
+            var eq3 = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Eq3 {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                PagoValidado = true
+            };
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Torneos.Add(torneo);
+                db.Equipos.AddRange(eq1, eq2, eq3);
+                db.Jugadores.Add(new Jugador
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Roman",
+                    Apellido = "Riquelme",
+                    Dni = $"{Random.Shared.Next(10000000, 99999999)}",
+                    EquipoId = eq3.Id
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Act - Intentar confirmar el 3er equipo excediendo el cupo
+            var response = await _client.PutAsJsonAsync($"/api/equipos/{eq3.Id}/estado", "InscritoYConfirmado");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task CambiarEstado_EquipoYaConfirmado_Retorna409Conflict()
+        {
+            // Arrange
+            var torneo = new Torneo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Torneo Estado {Guid.NewGuid():N}",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                EsPago = false,
+                CostoInscripcion = 0m,
+                Estado = EstadoTorneo.Abierto
+            };
+
+            var equipo = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Equipo Ya Confirmado {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+            };
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Torneos.Add(torneo);
+                db.Equipos.Add(equipo);
+                await db.SaveChangesAsync();
+            }
+
+            // Act - Intentar re-confirmar o transicionar equipo ya confirmado
+            var response = await _client.PutAsJsonAsync($"/api/equipos/{equipo.Id}/estado", "InscritoYConfirmado");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task CambiarEstado_AprobarExitoso_Retorna200OKYDeshabilitaEdicion()
+        {
+            // Arrange
+            var torneo = new Torneo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Torneo Exitoso {Guid.NewGuid():N}",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                EsPago = true,
+                CostoInscripcion = 1000m,
+                Estado = EstadoTorneo.Abierto
+            };
+
+            var equipo = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Equipo A Confirmar {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                PagoValidado = true,
+                ComprobanteUrl = "https://example.com/pago.pdf",
+                EdicionListaHabilitada = true
+            };
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Torneos.Add(torneo);
+                db.Equipos.Add(equipo);
+                db.Jugadores.Add(new Jugador
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Lionel",
+                    Apellido = "Messi",
+                    Dni = $"{Random.Shared.Next(10000000, 99999999)}",
+                    EquipoId = equipo.Id
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Act
+            var response = await _client.PutAsJsonAsync($"/api/equipos/{equipo.Id}/estado", "InscritoYConfirmado");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var updated = await response.Content.ReadFromJsonAsync<EquipoResponseDTO>();
+            Assert.NotNull(updated);
+            Assert.Equal(EstadoInscripcion.InscritoYConfirmado.ToString(), updated.EstadoInscripcion);
+
+            // Verificar persistencia en base de datos
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var equipoEnDb = await db.Equipos.FindAsync(equipo.Id);
+                Assert.NotNull(equipoEnDb);
+                Assert.Equal(EstadoInscripcion.InscritoYConfirmado, equipoEnDb.EstadoInscripcion);
+                Assert.False(equipoEnDb.EdicionListaHabilitada);
+            }
+        }
+
+        [Fact]
+        public async Task CambiarEstado_RechazarObservar_Retorna200OKYHabilitaEdicion()
+        {
+            // Arrange
+            var torneo = new Torneo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Torneo Rechazo {Guid.NewGuid():N}",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                EsPago = false,
+                CostoInscripcion = 0m,
+                Estado = EstadoTorneo.Abierto
+            };
+
+            var equipo = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Equipo A Observar {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                EdicionListaHabilitada = false
+            };
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Torneos.Add(torneo);
+                db.Equipos.Add(equipo);
+                await db.SaveChangesAsync();
+            }
+
+            // Act
+            var response = await _client.PutAsJsonAsync($"/api/equipos/{equipo.Id}/estado", "RechazadoObservado");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var updated = await response.Content.ReadFromJsonAsync<EquipoResponseDTO>();
+            Assert.NotNull(updated);
+            Assert.Equal(EstadoInscripcion.RechazadoObservado.ToString(), updated.EstadoInscripcion);
+
+            // Verificar persistencia en base de datos
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var equipoEnDb = await db.Equipos.FindAsync(equipo.Id);
+                Assert.NotNull(equipoEnDb);
+                Assert.Equal(EstadoInscripcion.RechazadoObservado, equipoEnDb.EstadoInscripcion);
+                Assert.True(equipoEnDb.EdicionListaHabilitada);
+            }
+        }
+
+        [Fact]
+        public async Task Test2_ConsultaPublicaAnonima_OcultaDniYDocumentacionUrl()
+        {
+            // Arrange (RNF-04: Privacidad en consultas públicas)
+            var torneo = await CreateTestTorneoAsync($"Torneo Privacidad {Guid.NewGuid():N}", Disciplina.Futbol);
+            var equipo = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Equipo Publico {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+            };
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Equipos.Add(equipo);
+                db.Jugadores.Add(new Jugador
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Lautaro",
+                    Apellido = "Martinez",
+                    Dni = "33444555",
+                    DocumentacionUrl = "https://confidencial.com/deslinde.pdf",
+                    EquipoId = equipo.Id
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Act 1: GET /api/equipos/{id} anónimo
+            var reqDetalle = new HttpRequestMessage(HttpMethod.Get, $"/api/equipos/{equipo.Id}");
+            reqDetalle.Headers.Add("X-Test-Anonymous", "true");
+            var resDetalle = await _client.SendAsync(reqDetalle);
+
+            // Assert 1: Responde 200 OK y el JSON NO expone dni ni documentacionUrl
+            Assert.Equal(HttpStatusCode.OK, resDetalle.StatusCode);
+            var jsonDetalle = await resDetalle.Content.ReadAsStringAsync();
+            Assert.Contains("Lautaro", jsonDetalle);
+            Assert.Contains("Martinez", jsonDetalle);
+            Assert.DoesNotContain("\"dni\"", jsonDetalle, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("\"documentacionurl\"", jsonDetalle, StringComparison.OrdinalIgnoreCase);
+
+            // Act 2: GET /api/equipos anónimo
+            var reqListado = new HttpRequestMessage(HttpMethod.Get, "/api/equipos");
+            reqListado.Headers.Add("X-Test-Anonymous", "true");
+            var resListado = await _client.SendAsync(reqListado);
+
+            // Assert 2: Responde 200 OK y el JSON NO expone dni ni documentacionUrl
+            Assert.Equal(HttpStatusCode.OK, resListado.StatusCode);
+            var jsonListado = await resListado.Content.ReadAsStringAsync();
+            Assert.DoesNotContain("\"dni\"", jsonListado, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("\"documentacionurl\"", jsonListado, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task Test3_AccesoAutorizado_OrganizadorYCapitanPropio_AccedenADniYDocumentacion()
+        {
+            // Arrange
+            var torneo = await CreateTestTorneoAsync($"Torneo PII Auth {Guid.NewGuid():N}", Disciplina.Futbol);
+            var capitanId = Guid.NewGuid();
+            var equipo = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Equipo Con Capitan {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                CapitanId = capitanId,
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+            };
+
+            var dniSensible = "38999888";
+            var docSensible = "https://privado.com/documentacion_secreta.pdf";
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Equipos.Add(equipo);
+                db.Jugadores.Add(new Jugador
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Enzo",
+                    Apellido = "Fernandez",
+                    Dni = dniSensible,
+                    DocumentacionUrl = docSensible,
+                    EquipoId = equipo.Id
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Act 1: Organizador consulta GET /api/equipos/{id}/nomina-completa
+            var reqOrg = new HttpRequestMessage(HttpMethod.Get, $"/api/equipos/{equipo.Id}/nomina-completa");
+            reqOrg.Headers.Add("X-Test-Role", "Organizador");
+            var resOrg = await _client.SendAsync(reqOrg);
+
+            // Assert 1: Acceso completo concedido
+            Assert.Equal(HttpStatusCode.OK, resOrg.StatusCode);
+            var jsonOrg = await resOrg.Content.ReadAsStringAsync();
+            Assert.Contains(dniSensible, jsonOrg);
+            Assert.Contains(docSensible, jsonOrg);
+
+            // Act 2: El propio Capitán consulta GET /api/equipos/{id}/nomina-completa
+            var reqCap = new HttpRequestMessage(HttpMethod.Get, $"/api/equipos/{equipo.Id}/nomina-completa");
+            reqCap.Headers.Add("X-Test-Role", "Capitan");
+            reqCap.Headers.Add("X-Test-UserId", capitanId.ToString());
+            var resCap = await _client.SendAsync(reqCap);
+
+            // Assert 2: Acceso completo concedido a su propio capitán
+            Assert.Equal(HttpStatusCode.OK, resCap.StatusCode);
+            var jsonCap = await resCap.Content.ReadAsStringAsync();
+            Assert.Contains(dniSensible, jsonCap);
+            Assert.Contains(docSensible, jsonCap);
+        }
+
+        [Fact]
+        public async Task Test4_Bloqueo403Forbidden_ParaOtroUsuarioNoAutorizado()
+        {
+            // Arrange - Equipo perteneciente a Capitan 1
+            var torneo = await CreateTestTorneoAsync($"Torneo PII Bloqueo {Guid.NewGuid():N}", Disciplina.Futbol);
+            var capitan1 = Guid.NewGuid();
+            var capitan2 = Guid.NewGuid();
+            var equipo = new Equipo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Equipo Protegido {Guid.NewGuid():N}",
+                TorneoId = torneo.Id,
+                CapitanId = capitan1,
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+            };
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Equipos.Add(equipo);
+                db.Jugadores.Add(new Jugador
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = "Alexis",
+                    Apellido = "MacAllister",
+                    Dni = "40111222",
+                    DocumentacionUrl = "https://privado.com/doc.pdf",
+                    EquipoId = equipo.Id
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Act 1: Capitan 2 intenta acceder a la nómina completa del Equipo de Capitan 1
+            var reqOtroCap = new HttpRequestMessage(HttpMethod.Get, $"/api/equipos/{equipo.Id}/nomina-completa");
+            reqOtroCap.Headers.Add("X-Test-Role", "Capitan");
+            reqOtroCap.Headers.Add("X-Test-UserId", capitan2.ToString());
+            var resOtroCap = await _client.SendAsync(reqOtroCap);
+
+            // Assert 1: Debe responder 403 Forbidden
+            Assert.Equal(HttpStatusCode.Forbidden, resOtroCap.StatusCode);
+
+            // Act 2: Veedor intenta acceder a la nómina completa
+            var reqVeedor = new HttpRequestMessage(HttpMethod.Get, $"/api/equipos/{equipo.Id}/nomina-completa");
+            reqVeedor.Headers.Add("X-Test-Role", "Veedor");
+            reqVeedor.Headers.Add("X-Test-UserId", Guid.NewGuid().ToString());
+            var resVeedor = await _client.SendAsync(reqVeedor);
+
+            // Assert 2: Debe responder 403 Forbidden
+            Assert.Equal(HttpStatusCode.Forbidden, resVeedor.StatusCode);
+
+            // Act 3: Usuario anónimo intenta acceder a endpoint protegido
+            var reqAnon = new HttpRequestMessage(HttpMethod.Get, $"/api/equipos/{equipo.Id}/nomina-completa");
+            reqAnon.Headers.Add("X-Test-Anonymous", "true");
+            var resAnon = await _client.SendAsync(reqAnon);
+
+            // Assert 3: Debe responder 401 Unauthorized
+            Assert.Equal(HttpStatusCode.Unauthorized, resAnon.StatusCode);
+        }
     }
 }
 

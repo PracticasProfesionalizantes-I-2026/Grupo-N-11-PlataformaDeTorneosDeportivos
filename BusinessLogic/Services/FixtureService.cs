@@ -14,11 +14,16 @@ namespace BusinessLogic.Services
     {
         private readonly ITorneoRepository _torneoRepository;
         private readonly IPartidoRepository _partidoRepository;
+        private readonly IUnitOfWork? _unitOfWork;
 
-        public FixtureService(ITorneoRepository torneoRepository, IPartidoRepository partidoRepository)
+        public FixtureService(
+            ITorneoRepository torneoRepository,
+            IPartidoRepository partidoRepository,
+            IUnitOfWork? unitOfWork = null)
         {
             _torneoRepository = torneoRepository;
             _partidoRepository = partidoRepository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<GenerarFixtureResponseDTO> GenerarFixtureAsync(Guid torneoId, GenerarFixtureRequestDTO dto)
@@ -170,9 +175,28 @@ namespace BusinessLogic.Services
             }
 
             // RN-08: Cierre definitivo de inscripción del torneo y cambio de estado a "En Desarrollo"
-            torneo.Estado = EstadoTorneo.EnDesarrollo;
-            await _torneoRepository.UpdateAsync(torneo);
-            await _partidoRepository.AddRangeAsync(partidosGenerados);
+            if (_unitOfWork != null)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    torneo.Estado = EstadoTorneo.EnDesarrollo;
+                    await _torneoRepository.UpdateAsync(torneo);
+                    await _partidoRepository.AddRangeAsync(partidosGenerados);
+                    await _unitOfWork.CommitTransactionAsync();
+                }
+                catch
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    throw;
+                }
+            }
+            else
+            {
+                torneo.Estado = EstadoTorneo.EnDesarrollo;
+                await _torneoRepository.UpdateAsync(torneo);
+                await _partidoRepository.AddRangeAsync(partidosGenerados);
+            }
 
             var nombresEquipos = equiposConfirmados.ToDictionary(e => e.Id, e => e.Nombre);
 
@@ -353,9 +377,28 @@ namespace BusinessLogic.Services
             }
 
             // RN-08: Bloqueo permanente de inscripciones y pase a "En Desarrollo"
-            torneo.Estado = EstadoTorneo.EnDesarrollo;
-            await _torneoRepository.UpdateAsync(torneo);
-            await _partidoRepository.AddRangeAsync(partidosGenerados);
+            if (_unitOfWork != null)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    torneo.Estado = EstadoTorneo.EnDesarrollo;
+                    await _torneoRepository.UpdateAsync(torneo);
+                    await _partidoRepository.AddRangeAsync(partidosGenerados);
+                    await _unitOfWork.CommitTransactionAsync();
+                }
+                catch
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    throw;
+                }
+            }
+            else
+            {
+                torneo.Estado = EstadoTorneo.EnDesarrollo;
+                await _torneoRepository.UpdateAsync(torneo);
+                await _partidoRepository.AddRangeAsync(partidosGenerados);
+            }
 
             var nombresEquipos = equiposConfirmados.ToDictionary(e => e.Id, e => e.Nombre);
             var fechaFin = partidosGenerados.Count > 0 ? partidosGenerados.Max(p => p.FechaHora) : fechaBase;

@@ -82,7 +82,7 @@ namespace DataAccess.Repositories
                 .ToListAsync();
         }
 
-        public async Task AddRangeAsync(IEnumerable<Partido> partidos)
+        public virtual async Task AddRangeAsync(IEnumerable<Partido> partidos)
         {
             await _dbSet.AddRangeAsync(partidos);
             await _context.SaveChangesAsync();

@@ -12,6 +12,7 @@ namespace Shared.DTOs
         private static readonly Regex TelefonoRegex = new(@"^\+?[0-9]{8,15}$", RegexOptions.Compiled);
         private static readonly Regex EmailRegex = new(@"^[^@\s<>]+@[^@\s<>]+\.[a-zA-Z]{2,}$", RegexOptions.Compiled);
         private static readonly Regex SedeRegex = new(@"^(?=.*[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ])[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\-\.\(\)]+$", RegexOptions.Compiled);
+        private static readonly Regex PasswordComplexityRegex = new(@"^(?=.*[a-zA-Z])(?=.*\d).+$", RegexOptions.Compiled);
 
         [Required(ErrorMessage = "El nombre es obligatorio.")]
         [StringLength(60, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre 2 y 60 caracteres.")]
@@ -40,6 +41,10 @@ namespace Shared.DTOs
 
         [StringLength(100, MinimumLength = 2, ErrorMessage = "La sede asignada debe tener entre 2 y 100 caracteres.")]
         public string? SedeAsignada { get; set; }
+
+        [StringLength(128, MinimumLength = 8, ErrorMessage = "La contraseña inicial debe tener entre 8 y 128 caracteres.")]
+        [RegularExpression(@"^(?=.*[a-zA-Z])(?=.*\d).+$", ErrorMessage = "La contraseña inicial debe contener al menos una letra y un número.")]
+        public string? PasswordInicial { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
@@ -76,6 +81,15 @@ namespace Shared.DTOs
                 if (string.IsNullOrWhiteSpace(sedeTrim) || sedeTrim.Length < 2 || sedeTrim.Length > 100 || !SedeRegex.IsMatch(sedeTrim))
                 {
                     yield return new ValidationResult("La sede asignada debe tener entre 2 y 100 caracteres válidos.", new[] { nameof(SedeAsignada) });
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(PasswordInicial))
+            {
+                var pwdTrim = PasswordInicial.Trim();
+                if (pwdTrim.Length < 8 || pwdTrim.Length > 128 || !PasswordComplexityRegex.IsMatch(pwdTrim))
+                {
+                    yield return new ValidationResult("La contraseña inicial debe tener entre 8 y 128 caracteres y contener al menos una letra y un número.", new[] { nameof(PasswordInicial) });
                 }
             }
 
@@ -184,6 +198,8 @@ namespace Shared.DTOs
         public List<Guid> TorneosAsignados { get; set; } = new();
         public string? SedeAsignada { get; set; }
         public DateTime FechaCreacion { get; set; }
+        public string? PasswordTemporal { get; set; }
+        public bool RequiereCambioPassword { get; set; }
     }
 
     public class PartidoCronogramaResponseDTO

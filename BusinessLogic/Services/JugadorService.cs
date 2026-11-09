@@ -38,7 +38,46 @@ namespace BusinessLogic.Services
             return jugadores.Select(MapToResponseDTO);
         }
 
-        public async Task<JugadorResponseDTO> CreateAsync(JugadorCreateDTO dto)
+        public async Task<IEnumerable<JugadorPublicResponseDTO>> GetByEquipoIdPublicAsync(Guid equipoId)
+        {
+            if (equipoId == Guid.Empty)
+                throw new ValidationException("El identificador del equipo no puede ser vacío.");
+
+            var jugadores = await _jugadorRepository.FindAsync(j => j.EquipoId == equipoId);
+            return jugadores.Select(j => new JugadorPublicResponseDTO
+            {
+                Id = j.Id,
+                Nombre = j.Nombre,
+                Apellido = j.Apellido,
+                EquipoId = j.EquipoId,
+                Inhabilitado = j.Inhabilitado
+            });
+        }
+
+        public async Task<IEnumerable<JugadorResponseDTO>> GetByEquipoIdDetalladoAsync(Guid equipoId, Guid? usuarioId, string? rol)
+        {
+            if (equipoId == Guid.Empty)
+                throw new ValidationException("El identificador del equipo no puede ser vacío.");
+
+            var equipo = await _equipoRepository.GetByIdAsync(equipoId);
+            if (equipo == null)
+            {
+                throw new EquipoNotFoundException("No se encontró el equipo especificado");
+            }
+
+            var isAuthorized = (rol == "Organizador" || rol == "Administrador") ||
+                               (rol == "Capitan" && usuarioId.HasValue && equipo.CapitanId.HasValue && equipo.CapitanId.Value == usuarioId.Value);
+
+            if (!isAuthorized)
+            {
+                throw new ForbiddenException("No tiene permisos para acceder a la nómina completa ni a los datos sensibles de este equipo.");
+            }
+
+            var jugadores = await _jugadorRepository.FindAsync(j => j.EquipoId == equipoId);
+            return jugadores.Select(MapToResponseDTO);
+        }
+
+        public async Task<JugadorResponseDTO> CreateAsync(JugadorCreateDTO dto, Guid? solicitanteId = null, string? rolSolicitante = null)
         {
             if (dto == null)
                 throw new ValidationException("Los datos del jugador son obligatorios.");
@@ -157,6 +196,23 @@ namespace BusinessLogic.Services
             if (equipoDestino == null)
                 throw new NotFoundException($"No se encontró el equipo con ID {dto.EquipoId}");
 
+            // Mitigación IDOR / Titularidad:
+            // Si el solicitante no es Organizador ni Administrador, solo el capitán dueño del equipo puede registrar jugadores.
+            if (solicitanteId.HasValue && rolSolicitante != "Organizador" && rolSolicitante != "Administrador")
+            {
+                if (!equipoDestino.CapitanId.HasValue || equipoDestino.CapitanId.Value != solicitanteId.Value)
+                {
+                    throw new ForbiddenException("No tiene permisos para registrar jugadores en un equipo que pertenece a otro capitán.");
+                }
+            }
+
+            // RN-03 / CU-05: Solo se pueden agregar jugadores si la edición de la lista de buena fe se encuentra habilitada
+            // y la inscripción del equipo no está confirmada ni bloqueada.
+            if (!equipoDestino.EdicionListaHabilitada || equipoDestino.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado)
+            {
+                throw new BusinessRuleConflictException("No se pueden agregar jugadores porque la edición de la lista de buena fe se encuentra deshabilitada o la inscripción del equipo ya fue confirmada/bloqueada.");
+            }
+
             // Regla Estricta: Un jugador no puede estar inscrito en más de un equipo en un mismo torneo.
             var jugadoresEnTorneo = await _jugadorRepository.FindAsync(j => j.Dni == normalizedDni);
             
@@ -182,7 +238,7 @@ namespace BusinessLogic.Services
             return MapToResponseDTO(jugador);
         }
 
-        public async Task DeleteAsync(Guid id)
+        public async Task DeleteAsync(Guid id, Guid? solicitanteId = null, string? rolSolicitante = null)
         {
             if (id == Guid.Empty)
                 throw new ValidationException("El identificador del jugador no puede ser vacío.");
@@ -190,6 +246,27 @@ namespace BusinessLogic.Services
             var jugador = await _jugadorRepository.GetByIdAsync(id);
             if (jugador == null)
                 throw new NotFoundException($"No se encontró el jugador con ID {id}");
+
+            var equipo = await _equipoRepository.GetByIdAsync(jugador.EquipoId);
+            if (equipo == null)
+                throw new NotFoundException($"No se encontró el equipo asociado al jugador con ID {id}");
+
+            // Mitigación IDOR / Titularidad:
+            // Si el solicitante no es Organizador ni Administrador, solo el capitán dueño del equipo puede eliminar jugadores.
+            if (solicitanteId.HasValue && rolSolicitante != "Organizador" && rolSolicitante != "Administrador")
+            {
+                if (!equipo.CapitanId.HasValue || equipo.CapitanId.Value != solicitanteId.Value)
+                {
+                    throw new ForbiddenException("No tiene permisos para modificar o eliminar jugadores de un equipo que no le pertenece.");
+                }
+            }
+
+            // RN-03: Solo se pueden eliminar jugadores si la edición de la lista de buena fe está habilitada
+            // y el equipo no se encuentra ya confirmado.
+            if (!equipo.EdicionListaHabilitada || equipo.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado)
+            {
+                throw new BusinessRuleConflictException("No se pueden eliminar ni modificar jugadores porque la edición de la lista de buena fe se encuentra deshabilitada.");
+            }
 
             await _jugadorRepository.DeleteAsync(jugador);
         }
@@ -329,7 +406,9 @@ namespace BusinessLogic.Services
                 Nombre = jugador.Nombre,
                 Apellido = jugador.Apellido,
                 Dni = jugador.Dni,
-                EquipoId = jugador.EquipoId
+                DocumentacionUrl = jugador.DocumentacionUrl,
+                EquipoId = jugador.EquipoId,
+                Inhabilitado = jugador.Inhabilitado
             };
         }
     }

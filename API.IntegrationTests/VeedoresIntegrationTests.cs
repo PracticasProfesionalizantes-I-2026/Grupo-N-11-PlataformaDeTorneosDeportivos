@@ -53,6 +53,43 @@ namespace API.IntegrationTests
             Assert.Equal(dto.Email, created.Email);
             Assert.Equal(RolUsuario.Veedor.ToString(), created.Rol);
             Assert.True(created.Activo);
+            Assert.False(string.IsNullOrWhiteSpace(created.PasswordTemporal));
+            Assert.True(created.RequiereCambioPassword);
+
+            // Verificar que GET no expone la PasswordTemporal
+            var getResponse = await _client.GetAsync($"/api/veedores/{created.Id}");
+            Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+            var retrieved = await getResponse.Content.ReadFromJsonAsync<VeedorResponseDTO>();
+            Assert.NotNull(retrieved);
+            Assert.Null(retrieved.PasswordTemporal);
+            Assert.True(retrieved.RequiereCambioPassword);
+        }
+
+        [Fact]
+        public async Task CreateVeedor_WithCustomPasswordInicial_Returns201CreatedAndPassword()
+        {
+            // Arrange
+            var uniqueDni = $"{Random.Shared.Next(10000000, 99999999)}";
+            var uniqueEmail = $"veedor_custom_{Guid.NewGuid():N}@torneos.com";
+
+            var dto = new VeedorCreateDTO
+            {
+                Nombre = "Veedor Custom",
+                Apellido = "Inicial",
+                Dni = uniqueDni,
+                Email = uniqueEmail,
+                PasswordInicial = "MiClaveInicial2026!"
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/veedores", dto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            var created = await response.Content.ReadFromJsonAsync<VeedorResponseDTO>();
+            Assert.NotNull(created);
+            Assert.Equal("MiClaveInicial2026!", created.PasswordTemporal);
+            Assert.True(created.RequiereCambioPassword);
         }
 
         [Fact]

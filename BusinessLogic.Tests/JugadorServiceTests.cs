@@ -44,7 +44,7 @@ namespace BusinessLogic.Tests
             var equipoDestinoId = Guid.NewGuid();
             var equipoExistenteId = Guid.NewGuid();
 
-            var equipoDestino = new Equipo { Id = equipoDestinoId, TorneoId = torneoId };
+            var equipoDestino = new Equipo { Id = equipoDestinoId, TorneoId = torneoId, EdicionListaHabilitada = true };
             var equipoExistente = new Equipo { Id = equipoExistenteId, TorneoId = torneoId, Nombre = "Equipo A" };
             
             var dto = new JugadorCreateDTO { Nombre = "Juan", Apellido = "Perez", Dni = "12345678", EquipoId = equipoDestinoId };
@@ -222,5 +222,446 @@ namespace BusinessLogic.Tests
 
             Assert.Equal("El DNI debe contener solo números.", ex.Message);
         }
+
+        #region RN-03 / CU-05: Validación de EdicionListaHabilitada y EstadoInscripcion
+
+        [Fact]
+        public async Task CreateAsync_EquipoConEdicionDeshabilitada_ThrowsBusinessRuleConflictException()
+        {
+            // Arrange
+            var equipoId = Guid.NewGuid();
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Bloqueado",
+                TorneoId = Guid.NewGuid(),
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                EdicionListaHabilitada = false
+            };
+
+            var dto = new JugadorCreateDTO
+            {
+                Nombre = "Lautaro",
+                Apellido = "Martinez",
+                Dni = "35111222",
+                EquipoId = equipoId
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<BusinessRuleConflictException>(() => _jugadorService.CreateAsync(dto));
+            Assert.Contains("edición de la lista de buena fe se encuentra deshabilitada", ex.Message);
+        }
+
+        [Fact]
+        public async Task CreateAsync_EquipoConfirmado_ThrowsBusinessRuleConflictException()
+        {
+            // Arrange
+            var equipoId = Guid.NewGuid();
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Confirmado",
+                TorneoId = Guid.NewGuid(),
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado,
+                EdicionListaHabilitada = true // Incluso si la bandera estuviera true, no debe permitir edición
+            };
+
+            var dto = new JugadorCreateDTO
+            {
+                Nombre = "Julian",
+                Apellido = "Alvarez",
+                Dni = "36111222",
+                EquipoId = equipoId
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<BusinessRuleConflictException>(() => _jugadorService.CreateAsync(dto));
+            Assert.Contains("confirmada/bloqueada", ex.Message);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_EquipoConEdicionDeshabilitada_ThrowsBusinessRuleConflictException()
+        {
+            // Arrange
+            var jugadorId = Guid.NewGuid();
+            var equipoId = Guid.NewGuid();
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo En Validacion",
+                TorneoId = Guid.NewGuid(),
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                EdicionListaHabilitada = false
+            };
+
+            var jugador = new Jugador
+            {
+                Id = jugadorId,
+                Nombre = "Emiliano",
+                Apellido = "Martinez",
+                Dni = "31111222",
+                EquipoId = equipoId
+            };
+
+            _jugadorRepositoryMock.Setup(r => r.GetByIdAsync(jugadorId)).ReturnsAsync(jugador);
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<BusinessRuleConflictException>(() => _jugadorService.DeleteAsync(jugadorId));
+            Assert.Contains("edición de la lista de buena fe se encuentra deshabilitada", ex.Message);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_EquipoConfirmado_ThrowsBusinessRuleConflictException()
+        {
+            // Arrange
+            var jugadorId = Guid.NewGuid();
+            var equipoId = Guid.NewGuid();
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Confirmado",
+                TorneoId = Guid.NewGuid(),
+                EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado,
+                EdicionListaHabilitada = false
+            };
+
+            var jugador = new Jugador
+            {
+                Id = jugadorId,
+                Nombre = "Rodrigo",
+                Apellido = "DePaul",
+                Dni = "32111222",
+                EquipoId = equipoId
+            };
+
+            _jugadorRepositoryMock.Setup(r => r.GetByIdAsync(jugadorId)).ReturnsAsync(jugador);
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<BusinessRuleConflictException>(() => _jugadorService.DeleteAsync(jugadorId));
+            Assert.Contains("deshabilitada", ex.Message);
+        }
+
+        [Fact]
+        public async Task CreateYDelete_EquipoRechazadoObservadoConEdicionHabilitada_OperacionExitosa()
+        {
+            // Arrange
+            var jugadorId = Guid.NewGuid();
+            var equipoId = Guid.NewGuid();
+            var torneoId = Guid.NewGuid();
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Observado",
+                TorneoId = torneoId,
+                EstadoInscripcion = EstadoInscripcion.RechazadoObservado,
+                EdicionListaHabilitada = true
+            };
+
+            var dto = new JugadorCreateDTO
+            {
+                Nombre = "Alexis",
+                Apellido = "MacAllister",
+                Dni = "33111222",
+                EquipoId = equipoId
+            };
+
+            var jugadorGuardado = new Jugador
+            {
+                Id = jugadorId,
+                Nombre = dto.Nombre,
+                Apellido = dto.Apellido,
+                Dni = dto.Dni,
+                EquipoId = equipoId
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+            _jugadorRepositoryMock.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Jugador, bool>>>()))
+                .ReturnsAsync(new List<Jugador>());
+            _jugadorRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Jugador>()))
+                .ReturnsAsync(jugadorGuardado);
+
+            // Act Create
+            var created = await _jugadorService.CreateAsync(dto);
+
+            // Assert Create
+            Assert.NotNull(created);
+            Assert.Equal("33111222", created.Dni);
+            _jugadorRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Jugador>()), Times.Once);
+
+            // Act Delete
+            _jugadorRepositoryMock.Setup(r => r.GetByIdAsync(jugadorId)).ReturnsAsync(jugadorGuardado);
+            _jugadorRepositoryMock.Setup(r => r.DeleteAsync(jugadorGuardado)).Returns(Task.CompletedTask);
+
+            await _jugadorService.DeleteAsync(jugadorId);
+
+            // Assert Delete
+            _jugadorRepositoryMock.Verify(r => r.DeleteAsync(jugadorGuardado), Times.Once);
+        }
+
+        #endregion
+
+        #region Mitigación IDOR y Validación de Titularidad (CU-05)
+
+        [Fact]
+        public async Task DeleteAsync_CapitanAjeno_ThrowsForbiddenException()
+        {
+            // Arrange
+            var jugadorId = Guid.NewGuid();
+            var equipoId = Guid.NewGuid();
+            var capitanDuenio = Guid.NewGuid();
+            var capitanAtacante = Guid.NewGuid();
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Titular",
+                TorneoId = Guid.NewGuid(),
+                CapitanId = capitanDuenio,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                EdicionListaHabilitada = true
+            };
+
+            var jugador = new Jugador
+            {
+                Id = jugadorId,
+                Nombre = "Leandro",
+                Apellido = "Paredes",
+                Dni = "35111222",
+                EquipoId = equipoId
+            };
+
+            _jugadorRepositoryMock.Setup(r => r.GetByIdAsync(jugadorId)).ReturnsAsync(jugador);
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+                _jugadorService.DeleteAsync(jugadorId, capitanAtacante, "Capitan"));
+
+            Assert.Contains("No tiene permisos para modificar o eliminar jugadores", ex.Message);
+            _jugadorRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Jugador>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_CapitanPropio_Succeeds()
+        {
+            // Arrange
+            var jugadorId = Guid.NewGuid();
+            var equipoId = Guid.NewGuid();
+            var capitanDuenio = Guid.NewGuid();
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Titular",
+                TorneoId = Guid.NewGuid(),
+                CapitanId = capitanDuenio,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                EdicionListaHabilitada = true
+            };
+
+            var jugador = new Jugador
+            {
+                Id = jugadorId,
+                Nombre = "Leandro",
+                Apellido = "Paredes",
+                Dni = "35111222",
+                EquipoId = equipoId
+            };
+
+            _jugadorRepositoryMock.Setup(r => r.GetByIdAsync(jugadorId)).ReturnsAsync(jugador);
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+            _jugadorRepositoryMock.Setup(r => r.DeleteAsync(jugador)).Returns(Task.CompletedTask);
+
+            // Act
+            await _jugadorService.DeleteAsync(jugadorId, capitanDuenio, "Capitan");
+
+            // Assert
+            _jugadorRepositoryMock.Verify(r => r.DeleteAsync(jugador), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_Organizador_EquipoAjeno_Succeeds()
+        {
+            // Arrange
+            var jugadorId = Guid.NewGuid();
+            var equipoId = Guid.NewGuid();
+            var capitanDuenio = Guid.NewGuid();
+            var organizadorId = Guid.NewGuid();
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Titular",
+                TorneoId = Guid.NewGuid(),
+                CapitanId = capitanDuenio,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                EdicionListaHabilitada = true
+            };
+
+            var jugador = new Jugador
+            {
+                Id = jugadorId,
+                Nombre = "Leandro",
+                Apellido = "Paredes",
+                Dni = "35111222",
+                EquipoId = equipoId
+            };
+
+            _jugadorRepositoryMock.Setup(r => r.GetByIdAsync(jugadorId)).ReturnsAsync(jugador);
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+            _jugadorRepositoryMock.Setup(r => r.DeleteAsync(jugador)).Returns(Task.CompletedTask);
+
+            // Act: Un organizador puede eliminarlo por bypass administrativo
+            await _jugadorService.DeleteAsync(jugadorId, organizadorId, "Organizador");
+
+            // Assert
+            _jugadorRepositoryMock.Verify(r => r.DeleteAsync(jugador), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_CapitanAjeno_ThrowsForbiddenException()
+        {
+            // Arrange
+            var equipoId = Guid.NewGuid();
+            var capitanDuenio = Guid.NewGuid();
+            var capitanAtacante = Guid.NewGuid();
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Titular",
+                TorneoId = Guid.NewGuid(),
+                CapitanId = capitanDuenio,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                EdicionListaHabilitada = true
+            };
+
+            var dto = new JugadorCreateDTO
+            {
+                Nombre = "Nicolas",
+                Apellido = "Tagliafico",
+                Dni = "35999888",
+                EquipoId = equipoId
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+                _jugadorService.CreateAsync(dto, capitanAtacante, "Capitan"));
+
+            Assert.Contains("No tiene permisos para registrar jugadores en un equipo que pertenece a otro capitán", ex.Message);
+            _jugadorRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Jugador>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateAsync_CapitanPropio_Succeeds()
+        {
+            // Arrange
+            var equipoId = Guid.NewGuid();
+            var capitanDuenio = Guid.NewGuid();
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Titular",
+                TorneoId = Guid.NewGuid(),
+                CapitanId = capitanDuenio,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                EdicionListaHabilitada = true
+            };
+
+            var dto = new JugadorCreateDTO
+            {
+                Nombre = "Nicolas",
+                Apellido = "Tagliafico",
+                Dni = "35999888",
+                EquipoId = equipoId
+            };
+
+            var jugadorGuardado = new Jugador
+            {
+                Id = Guid.NewGuid(),
+                Nombre = dto.Nombre,
+                Apellido = dto.Apellido,
+                Dni = dto.Dni,
+                EquipoId = equipoId
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+            _jugadorRepositoryMock.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Jugador, bool>>>()))
+                .ReturnsAsync(new List<Jugador>());
+            _jugadorRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Jugador>()))
+                .ReturnsAsync(jugadorGuardado);
+
+            // Act
+            var created = await _jugadorService.CreateAsync(dto, capitanDuenio, "Capitan");
+
+            // Assert
+            Assert.NotNull(created);
+            Assert.Equal("35999888", created.Dni);
+            _jugadorRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Jugador>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_Organizador_EquipoAjeno_Succeeds()
+        {
+            // Arrange
+            var equipoId = Guid.NewGuid();
+            var capitanDuenio = Guid.NewGuid();
+            var organizadorId = Guid.NewGuid();
+
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Equipo Titular",
+                TorneoId = Guid.NewGuid(),
+                CapitanId = capitanDuenio,
+                EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion,
+                EdicionListaHabilitada = true
+            };
+
+            var dto = new JugadorCreateDTO
+            {
+                Nombre = "Nicolas",
+                Apellido = "Tagliafico",
+                Dni = "35999888",
+                EquipoId = equipoId
+            };
+
+            var jugadorGuardado = new Jugador
+            {
+                Id = Guid.NewGuid(),
+                Nombre = dto.Nombre,
+                Apellido = dto.Apellido,
+                Dni = dto.Dni,
+                EquipoId = equipoId
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdAsync(equipoId)).ReturnsAsync(equipo);
+            _jugadorRepositoryMock.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Jugador, bool>>>()))
+                .ReturnsAsync(new List<Jugador>());
+            _jugadorRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Jugador>()))
+                .ReturnsAsync(jugadorGuardado);
+
+            // Act: Organizador con solicitanteId distinto a capitanDuenio
+            var created = await _jugadorService.CreateAsync(dto, organizadorId, "Organizador");
+
+            // Assert
+            Assert.NotNull(created);
+            Assert.Equal("35999888", created.Dni);
+            _jugadorRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Jugador>()), Times.Once);
+        }
+
+        #endregion
     }
 }

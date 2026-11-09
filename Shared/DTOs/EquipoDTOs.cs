@@ -25,6 +25,7 @@ namespace Shared.DTOs
         public string? Comprobante { get => ComprobanteUrl; set => ComprobanteUrl = value; }
 
         public Guid TorneoId { get; set; }
+        public Guid? CapitanId { get; set; }
 
         [Required(ErrorMessage = "La lista de jugadores es obligatoria.")]
         public List<JugadorCreateDTO> Jugadores { get; set; } = new();
@@ -111,6 +112,10 @@ namespace Shared.DTOs
         [StringLength(500, ErrorMessage = "La URL del logo no puede exceder los 500 caracteres.")]
         public string? Logo { get; set; }
 
+        [StringLength(500, ErrorMessage = "La URL del comprobante no puede exceder los 500 caracteres.")]
+        public string? ComprobanteUrl { get; set; }
+        public string? Comprobante { get => ComprobanteUrl; set => ComprobanteUrl = value; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             var nombreTrim = Nombre?.Trim() ?? string.Empty;
@@ -127,6 +132,16 @@ namespace Shared.DTOs
                     yield return new ValidationResult("La URL del logo no es válida.", new[] { nameof(Logo) });
                 }
             }
+
+            var comp = ComprobanteUrl ?? Comprobante;
+            if (comp != null)
+            {
+                var compTrim = comp.Trim();
+                if (string.IsNullOrWhiteSpace(compTrim) || compTrim.Length > 500 || compTrim.Contains('<') || compTrim.Contains('>') || compTrim.Contains(' '))
+                {
+                    yield return new ValidationResult("La URL del comprobante no es válida.", new[] { nameof(ComprobanteUrl) });
+                }
+            }
         }
     }
 
@@ -136,9 +151,27 @@ namespace Shared.DTOs
         public string Nombre { get; set; } = string.Empty;
         public string? Logo { get; set; }
         public string? LogoUrl { get => Logo; set => Logo = value; }
+        public string? ComprobanteUrl { get; set; }
+        public string? Comprobante { get => ComprobanteUrl; set => ComprobanteUrl = value; }
+        public bool PagoValidado { get; set; }
+        public bool EdicionListaHabilitada { get; set; }
+        public string? MotivoRechazo { get; set; }
+        public string EstadoInscripcion { get; set; } = string.Empty;
+        public Guid TorneoId { get; set; }
+        public Guid? CapitanId { get; set; }
+        public int CantidadJugadores { get; set; }
+        public List<JugadorResponseDTO> Jugadores { get; set; } = new();
+    }
+
+    public class EquipoPublicResponseDTO
+    {
+        public Guid Id { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string? Logo { get; set; }
+        public string? LogoUrl { get => Logo; set => Logo = value; }
         public string EstadoInscripcion { get; set; } = string.Empty;
         public Guid TorneoId { get; set; }
         public int CantidadJugadores { get; set; }
-        public List<JugadorResponseDTO> Jugadores { get; set; } = new();
+        public List<JugadorPublicResponseDTO> Jugadores { get; set; } = new();
     }
 }

@@ -364,5 +364,157 @@ namespace BusinessLogic.Tests
 
             _usuarioRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Usuario>()), Times.Never);
         }
+
+        [Fact]
+        public async Task LoginAsync_WhenRequiereCambioPasswordTrue_ReturnsFlagInResponse()
+        {
+            // Arrange
+            var dto = new LoginRequestDTO
+            {
+                EmailOrDni = "veedor@torneos.com",
+                Password = "TempPassword123!"
+            };
+
+            var usuario = new Usuario
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Veedor",
+                Apellido = "Test",
+                Email = "veedor@torneos.com",
+                Dni = "87654321",
+                PasswordHash = "hash-temp",
+                Rol = RolUsuario.Veedor,
+                Activo = true,
+                RequiereCambioPassword = true
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByEmailOrDniAsync(dto.EmailOrDni))
+                .ReturnsAsync(usuario);
+
+            _passwordHasherMock.Setup(p => p.VerifyPassword(dto.Password, usuario.PasswordHash))
+                .Returns(true);
+
+            // Act
+            var result = await _authService.LoginAsync(dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(result.RequiereCambioPassword);
+        }
+
+        [Fact]
+        public async Task CambiarPasswordInicialAsync_WithValidData_UpdatesPasswordAndClearsFlag()
+        {
+            // Arrange
+            var dto = new CambiarPasswordInicialDTO
+            {
+                EmailOrDni = "veedor@torneos.com",
+                PasswordActual = "TempPassword123!",
+                NuevaPassword = "NuevaPasswordDefinitiva123!"
+            };
+
+            var usuario = new Usuario
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Veedor",
+                Apellido = "Test",
+                Email = "veedor@torneos.com",
+                Dni = "87654321",
+                PasswordHash = "hash-viejo",
+                Rol = RolUsuario.Veedor,
+                Activo = true,
+                RequiereCambioPassword = true
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByEmailOrDniAsync(dto.EmailOrDni))
+                .ReturnsAsync(usuario);
+
+            _passwordHasherMock.Setup(p => p.VerifyPassword(dto.PasswordActual, "hash-viejo"))
+                .Returns(true);
+
+            _passwordHasherMock.Setup(p => p.HashPassword(dto.NuevaPassword))
+                .Returns("hash-nuevo-999");
+
+            // Act
+            var result = await _authService.CambiarPasswordInicialAsync(dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(result.Exito);
+            Assert.False(string.IsNullOrWhiteSpace(result.Token));
+            Assert.False(usuario.RequiereCambioPassword);
+            Assert.Equal("hash-nuevo-999", usuario.PasswordHash);
+
+            _usuarioRepositoryMock.Verify(r => r.UpdateAsync(usuario), Times.Once);
+        }
+
+        [Fact]
+        public async Task CambiarPasswordInicialAsync_WhenSamePassword_ThrowsValidationException()
+        {
+            // Arrange
+            var dto = new CambiarPasswordInicialDTO
+            {
+                EmailOrDni = "veedor@torneos.com",
+                PasswordActual = "MismaPassword123!",
+                NuevaPassword = "MismaPassword123!"
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ValidationException>(() => _authService.CambiarPasswordInicialAsync(dto));
+            Assert.Contains("idéntica", ex.Message, StringComparison.OrdinalIgnoreCase);
+
+            _usuarioRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Usuario>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CambiarPasswordInicialAsync_WhenWrongCurrentPassword_ThrowsUnauthorizedException()
+        {
+            // Arrange
+            var dto = new CambiarPasswordInicialDTO
+            {
+                EmailOrDni = "veedor@torneos.com",
+                PasswordActual = "PasswordEquivocada1!",
+                NuevaPassword = "NuevaPassword123!"
+            };
+
+            var usuario = new Usuario
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Veedor",
+                Apellido = "Test",
+                Email = "veedor@torneos.com",
+                PasswordHash = "hash-real",
+                Activo = true
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByEmailOrDniAsync(dto.EmailOrDni))
+                .ReturnsAsync(usuario);
+
+            _passwordHasherMock.Setup(p => p.VerifyPassword(dto.PasswordActual, "hash-real"))
+                .Returns(false);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedException>(() => _authService.CambiarPasswordInicialAsync(dto));
+            _usuarioRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Usuario>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CambiarPasswordInicialAsync_WhenUserNotFound_ThrowsUnauthorizedException()
+        {
+            // Arrange
+            var dto = new CambiarPasswordInicialDTO
+            {
+                EmailOrDni = "inexistente@torneos.com",
+                PasswordActual = "TempPassword123!",
+                NuevaPassword = "NuevaPassword123!"
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByEmailOrDniAsync(dto.EmailOrDni))
+                .ReturnsAsync((Usuario?)null);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedException>(() => _authService.CambiarPasswordInicialAsync(dto));
+            _usuarioRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Usuario>()), Times.Never);
+        }
     }
 }

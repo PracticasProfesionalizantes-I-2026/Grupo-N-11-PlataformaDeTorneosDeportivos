@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Shared.Exceptions;
 
 namespace API.Middlewares
@@ -52,6 +53,10 @@ namespace API.Middlewares
                     {
                         message = "El formato de la petición es inválido.";
                     }
+                    break;
+                case DbUpdateConcurrencyException _:
+                    code = HttpStatusCode.Conflict; // 409
+                    message = "El registro fue modificado simultáneamente por otro usuario. Por favor, reintente la operación.";
                     break;
                 case UsuarioDuplicadoException _:
                 case PartidoEstadoInvalidoException _:

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using Shared.Enums;
 
 namespace DataAccess.Entities
@@ -11,11 +12,18 @@ namespace DataAccess.Entities
         public string? Logo { get; set; }
         public EstadoInscripcion EstadoInscripcion { get; set; }
         public bool PagoValidado { get; set; } = false;
+
+        [MaxLength(500)]
+        public string? ComprobanteUrl { get; set; }
+
         public string? MotivoRechazo { get; set; }
         public bool EdicionListaHabilitada { get; set; } = false;
 
         public Guid TorneoId { get; set; }
         public Torneo Torneo { get; set; } = null!;
+
+        public Guid? CapitanId { get; set; }
+        public Usuario? Capitan { get; set; }
 
         public ICollection<Jugador> Jugadores { get; set; } = new List<Jugador>();
     }

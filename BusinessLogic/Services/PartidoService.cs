@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using DataAccess.Entities;
 using DataAccess.Repositories;
@@ -11,10 +13,17 @@ namespace BusinessLogic.Services
     public class PartidoService : IPartidoService
     {
         private readonly IPartidoRepository _partidoRepository;
+        private readonly ITorneoRepository? _torneoRepository;
+        private readonly IUnitOfWork? _unitOfWork;
 
-        public PartidoService(IPartidoRepository partidoRepository)
+        public PartidoService(
+            IPartidoRepository partidoRepository,
+            ITorneoRepository? torneoRepository = null,
+            IUnitOfWork? unitOfWork = null)
         {
             _partidoRepository = partidoRepository;
+            _torneoRepository = torneoRepository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<PartidoResultadoResponseDTO> LoadResultadoAsync(Guid id, CargarResultadoDTO dto)
@@ -91,16 +100,173 @@ namespace BusinessLogic.Services
                 }
             }
 
+            if (_unitOfWork != null)
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    await EjecutarCargaResultadoYAvanceAsync(partido, marcadorLocal.Value, marcadorVisitante.Value, penalesLocal, penalesVisitante);
+                    await _unitOfWork.CommitTransactionAsync();
+                }
+                catch
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    throw;
+                }
+            }
+            else
+            {
+                await EjecutarCargaResultadoYAvanceAsync(partido, marcadorLocal.Value, marcadorVisitante.Value, penalesLocal, penalesVisitante);
+            }
+
+            return MapToResponseDTO(partido);
+        }
+
+        private async Task EjecutarCargaResultadoYAvanceAsync(
+            Partido partido,
+            int marcadorLocal,
+            int marcadorVisitante,
+            int? penalesLocal,
+            int? penalesVisitante)
+        {
             // Flujo Principal: Actualizar marcador y pasar a Finalizado
-            partido.MarcadorLocal = marcadorLocal.Value;
-            partido.MarcadorVisitante = marcadorVisitante.Value;
+            partido.MarcadorLocal = marcadorLocal;
+            partido.MarcadorVisitante = marcadorVisitante;
             partido.PenalesLocal = penalesLocal;
             partido.PenalesVisitante = penalesVisitante;
             partido.Estado = EstadoPartido.Finalizado;
 
             await _partidoRepository.UpdateAsync(partido);
 
-            return MapToResponseDTO(partido);
+            // Obtener torneo
+            var torneo = partido.Torneo ?? (_torneoRepository != null ? await _torneoRepository.GetByIdAsync(partido.TorneoId) : null);
+            if (torneo == null || torneo.Modalidad != Modalidad.EliminacionDirecta)
+            {
+                return;
+            }
+
+            var ganadorActual = ObtenerGanador(partido);
+            if (!ganadorActual.HasValue)
+            {
+                return;
+            }
+
+            // Consultar todos los partidos del torneo para analizar la ronda actual y las llaves
+            var partidosQuery = await _partidoRepository.GetPartidosByTorneoIdAsync(partido.TorneoId);
+            var todosPartidos = partidosQuery != null ? partidosQuery.ToList() : new List<Partido>();
+
+            var idx = todosPartidos.FindIndex(p => p.Id == partido.Id);
+            if (idx >= 0)
+            {
+                todosPartidos[idx] = partido;
+            }
+            else
+            {
+                todosPartidos.Add(partido);
+            }
+
+            var partidosRondaActual = todosPartidos
+                .Where(p => p.Ronda == partido.Ronda)
+                .OrderBy(p => p.FechaHora)
+                .ThenBy(p => p.Id)
+                .ToList();
+
+            // CASO A: Es el Partido Final (solo existe 1 partido en la ronda actual)
+            if (partidosRondaActual.Count == 1)
+            {
+                torneo.CampeonId = ganadorActual.Value;
+                torneo.Estado = EstadoTorneo.Finalizado;
+
+                if (_torneoRepository != null)
+                {
+                    await _torneoRepository.UpdateAsync(torneo);
+                }
+                return;
+            }
+
+            // CASO B: Es una Ronda Previa (Cruces de llaves eliminatorias)
+            int cruces = partidosRondaActual.Count / 2;
+            for (int k = 0; k < cruces; k++)
+            {
+                var matchPar = partidosRondaActual[2 * k];
+                var matchImpar = partidosRondaActual[2 * k + 1];
+
+                if (matchPar.Id == partido.Id || matchImpar.Id == partido.Id)
+                {
+                    // Solo avanzar si ambos partidos del cruce han finalizado
+                    if (matchPar.Estado == EstadoPartido.Finalizado && matchImpar.Estado == EstadoPartido.Finalizado)
+                    {
+                        var ganadorPar = ObtenerGanador(matchPar);
+                        var ganadorImpar = ObtenerGanador(matchImpar);
+
+                        if (ganadorPar.HasValue && ganadorImpar.HasValue)
+                        {
+                            int rondaSiguiente = partido.Ronda + 1;
+                            var partidosRondaSiguiente = todosPartidos
+                                .Where(p => p.Ronda == rondaSiguiente)
+                                .OrderBy(p => p.FechaHora)
+                                .ThenBy(p => p.Id)
+                                .ToList();
+
+                            // Buscar si ya existe el partido programado para este cruce
+                            var matchSiguiente = partidosRondaSiguiente.FirstOrDefault(p =>
+                                (p.FechaHora.Hour == 10 + k * 2) ||
+                                (p.EquipoLocalId == ganadorPar.Value && p.EquipoVisitanteId == ganadorImpar.Value));
+
+                            if (matchSiguiente != null)
+                            {
+                                matchSiguiente.EquipoLocalId = ganadorPar.Value;
+                                matchSiguiente.EquipoVisitanteId = ganadorImpar.Value;
+                                matchSiguiente.Estado = EstadoPartido.Pendiente;
+
+                                await _partidoRepository.UpdateAsync(matchSiguiente);
+                            }
+                            else
+                            {
+                                var maxFecha = matchPar.FechaHora > matchImpar.FechaHora ? matchPar.FechaHora : matchImpar.FechaHora;
+                                var fechaSiguiente = maxFecha.Date.AddDays(1).AddHours(10 + k * 2);
+
+                                var nuevoPartido = new Partido
+                                {
+                                    Id = Guid.NewGuid(),
+                                    TorneoId = torneo.Id,
+                                    EquipoLocalId = ganadorPar.Value,
+                                    EquipoVisitanteId = ganadorImpar.Value,
+                                    Ronda = rondaSiguiente,
+                                    Estado = EstadoPartido.Pendiente,
+                                    FechaHora = fechaSiguiente,
+                                    Sede = matchPar.Sede ?? "Cancha 1"
+                                };
+
+                                await _partidoRepository.AddAsync(nuevoPartido);
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        private static Guid? ObtenerGanador(Partido partido)
+        {
+            if (!partido.MarcadorLocal.HasValue || !partido.MarcadorVisitante.HasValue)
+                return null;
+
+            if (partido.MarcadorLocal.Value > partido.MarcadorVisitante.Value)
+                return partido.EquipoLocalId;
+
+            if (partido.MarcadorVisitante.Value > partido.MarcadorLocal.Value)
+                return partido.EquipoVisitanteId;
+
+            if (partido.PenalesLocal.HasValue && partido.PenalesVisitante.HasValue)
+            {
+                if (partido.PenalesLocal.Value > partido.PenalesVisitante.Value)
+                    return partido.EquipoLocalId;
+                if (partido.PenalesVisitante.Value > partido.PenalesLocal.Value)
+                    return partido.EquipoVisitanteId;
+            }
+
+            return null;
         }
 
         private static PartidoResultadoResponseDTO MapToResponseDTO(Partido partido)

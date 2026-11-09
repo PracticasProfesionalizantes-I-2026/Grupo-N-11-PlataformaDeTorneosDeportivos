@@ -178,5 +178,150 @@ namespace BusinessLogic.Tests
             Assert.Equal("El DNI debe contener solo números.", ex.Message);
             _usuarioRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Usuario>()), Times.Never);
         }
+
+        #region Prevención de Escalada de Privilegios (CU-01 / RNF-04)
+
+        [Theory]
+        [InlineData(RolUsuario.Administrador)]
+        [InlineData(RolUsuario.Organizador)]
+        [InlineData(RolUsuario.Veedor)]
+        public async Task RegisterUsuarioAsync_IntentoEscaladaRolElevado_FuerzaRolCapitan(RolUsuario rolElevado)
+        {
+            // Arrange
+            var dto = new UsuarioRegistroDTO
+            {
+                Nombre = "Hacker",
+                Apellido = "Malicioso",
+                Dni = "40999888",
+                Email = "hacker@torneos.com",
+                Password = "Password123!",
+                Rol = rolElevado // Intento de inyectar rol administrativo
+            };
+
+            const string fakeHash = "fake-hash-seguro";
+            _usuarioRepositoryMock.Setup(r => r.GetByEmailAsync(dto.Email.ToLowerInvariant()))
+                .ReturnsAsync((Usuario?)null);
+            _usuarioRepositoryMock.Setup(r => r.GetByDniAsync(dto.Dni))
+                .ReturnsAsync((Usuario?)null);
+            _passwordHasherMock.Setup(p => p.HashPassword(dto.Password))
+                .Returns(fakeHash);
+            _usuarioRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Usuario>()))
+                .ReturnsAsync((Usuario u) => u);
+
+            // Act
+            var result = await _usuarioService.RegisterUsuarioAsync(dto);
+
+            // Assert: El usuario devuelto y persistido NUNCA debe tener el rol elevado solicitado, sino Capitan
+            Assert.NotNull(result);
+            Assert.Equal("Capitan", result.Rol);
+
+            _usuarioRepositoryMock.Verify(r => r.AddAsync(It.Is<Usuario>(u =>
+                u.Rol == RolUsuario.Capitan &&
+                u.Rol != rolElevado
+            )), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateUsuarioAdminAsync_UsuarioSinRolAdministrativo_ThrowsForbiddenException()
+        {
+            // Arrange
+            var dto = new UsuarioRegistroDTO
+            {
+                Nombre = "Intruso",
+                Apellido = "Admin",
+                Dni = "38111222",
+                Email = "intruso@torneos.com",
+                Password = "Password123!",
+                Rol = RolUsuario.Organizador
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+                _usuarioService.CreateUsuarioAdminAsync(dto, "Capitan"));
+
+            Assert.Contains("No tiene permisos para dar de alta usuarios con roles administrativos", ex.Message);
+            _usuarioRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Usuario>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateUsuarioAdminAsync_Administrador_PermiteAsignarRolElevado()
+        {
+            // Arrange
+            var dto = new UsuarioRegistroDTO
+            {
+                Nombre = "Nuevo",
+                Apellido = "Organizador",
+                Dni = "38111333",
+                Email = "nuevo.org@torneos.com",
+                Password = "Password123!",
+                Rol = RolUsuario.Organizador
+            };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByEmailAsync(dto.Email.ToLowerInvariant()))
+                .ReturnsAsync((Usuario?)null);
+            _usuarioRepositoryMock.Setup(r => r.GetByDniAsync(dto.Dni))
+                .ReturnsAsync((Usuario?)null);
+            _passwordHasherMock.Setup(p => p.HashPassword(dto.Password))
+                .Returns("hash-admin");
+            _usuarioRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Usuario>()))
+                .ReturnsAsync((Usuario u) => u);
+
+            // Act: Invocado legítimamente por un Administrador
+            var result = await _usuarioService.CreateUsuarioAdminAsync(dto, "Administrador");
+
+            // Assert: En endpoint protegido administrativo sí se respeta el rol
+            Assert.NotNull(result);
+            Assert.Equal("Organizador", result.Rol);
+            _usuarioRepositoryMock.Verify(r => r.AddAsync(It.Is<Usuario>(u => u.Rol == RolUsuario.Organizador)), Times.Once);
+        }
+
+        [Fact]
+        public async Task CambiarRolAsync_UsuarioSinRolAdministrativo_ThrowsForbiddenException()
+        {
+            // Arrange
+            var usuarioId = Guid.NewGuid();
+            var dto = new CambiarRolDTO { NuevoRol = RolUsuario.Administrador };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+                _usuarioService.CambiarRolAsync(usuarioId, dto, "Capitan"));
+
+            Assert.Contains("No tiene permisos para asignar o modificar roles", ex.Message);
+            _usuarioRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Usuario>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CambiarRolAsync_Administrador_ModificaRolCorrectamente()
+        {
+            // Arrange
+            var usuarioId = Guid.NewGuid();
+            var usuarioExistente = new Usuario
+            {
+                Id = usuarioId,
+                Nombre = "Franco",
+                Apellido = "Serafin",
+                Dni = "39111222",
+                Email = "franco@torneos.com",
+                Rol = RolUsuario.Capitan
+            };
+
+            var dto = new CambiarRolDTO { NuevoRol = RolUsuario.Organizador };
+
+            _usuarioRepositoryMock.Setup(r => r.GetByIdAsync(usuarioId))
+                .ReturnsAsync(usuarioExistente);
+            _usuarioRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Usuario>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _usuarioService.CambiarRolAsync(usuarioId, dto, "Administrador");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal("Organizador", result.Rol);
+            Assert.Equal(RolUsuario.Organizador, usuarioExistente.Rol);
+            _usuarioRepositoryMock.Verify(r => r.UpdateAsync(usuarioExistente), Times.Once);
+        }
+
+        #endregion
     }
 }

@@ -72,4 +72,34 @@ namespace Shared.DTOs
         public bool EdicionListaHabilitada { get; set; }
         public string Mensaje { get; set; } = string.Empty;
     }
+
+    public class ValidarPagoDTO : IValidatableObject
+    {
+        [StringLength(500, ErrorMessage = "La URL del comprobante no puede exceder los 500 caracteres.")]
+        public string? ComprobanteUrl { get; set; }
+        public string? Comprobante { get => ComprobanteUrl; set => ComprobanteUrl = value; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var comp = ComprobanteUrl ?? Comprobante;
+            if (comp != null)
+            {
+                var compTrim = comp.Trim();
+                if (string.IsNullOrWhiteSpace(compTrim) || compTrim.Length > 500 || compTrim.Contains('<') || compTrim.Contains('>') || compTrim.Contains(' '))
+                {
+                    yield return new ValidationResult("La URL del comprobante no es válida.", new[] { nameof(ComprobanteUrl) });
+                }
+            }
+        }
+    }
+
+    public class ValidarPagoResponseDTO
+    {
+        public Guid EquipoId { get; set; }
+        public string NombreEquipo { get; set; } = string.Empty;
+        public Guid TorneoId { get; set; }
+        public string? ComprobanteUrl { get; set; }
+        public bool PagoValidado { get; set; }
+        public string Mensaje { get; set; } = string.Empty;
+    }
 }

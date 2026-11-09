@@ -7,7 +7,7 @@ namespace BusinessLogic.Services
 {
     public interface IVeedorService
     {
-        Task<VeedorResponseDTO> CreateVeedorAsync(VeedorCreateDTO dto);
+        Task<VeedorResponseDTO> CreateVeedorAsync(VeedorCreateDTO dto, string? rolSolicitante = null);
         Task<VeedorResponseDTO> UpdateVeedorAsync(Guid id, VeedorUpdateDTO dto);
         Task DeactivateVeedorAsync(Guid id);
         Task<VeedorResponseDTO> GetByIdAsync(Guid id);

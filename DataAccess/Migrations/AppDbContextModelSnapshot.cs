@@ -23,24 +23,80 @@ namespace DataAccess.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("CapitanId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ComprobanteUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("EdicionListaHabilitada")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("EstadoInscripcion")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Logo")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("MotivoRechazo")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("PagoValidado")
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid>("TorneoId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CapitanId");
+
                     b.HasIndex("TorneoId");
 
                     b.ToTable("Equipos");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.Incidencia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EquipoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("JugadorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Minuto")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Observaciones")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("PartidoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TipoIncidencia")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquipoId");
+
+                    b.HasIndex("JugadorId");
+
+                    b.HasIndex("PartidoId");
+
+                    b.ToTable("Incidencias");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.Jugador", b =>
@@ -57,8 +113,14 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DocumentacionUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("EquipoId")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("Inhabilitado")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -71,10 +133,117 @@ namespace DataAccess.Migrations
                     b.ToTable("Jugadores");
                 });
 
+            modelBuilder.Entity("DataAccess.Entities.Partido", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EquipoLocalId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EquipoVisitanteId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("FechaHora")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MarcadorLocal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MarcadorVisitante")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PenalesLocal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PenalesVisitante")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Ronda")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Sede")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TorneoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("VeedorId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquipoLocalId");
+
+                    b.HasIndex("EquipoVisitanteId");
+
+                    b.HasIndex("TorneoId");
+
+                    b.HasIndex("VeedorId");
+
+                    b.ToTable("Partidos");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.Publicidad", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Clicks")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImagenUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Impresiones")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NombrePatrocinador")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("TorneoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Ubicacion")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UrlDestino")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TorneoId");
+
+                    b.ToTable("Publicidades");
+                });
+
             modelBuilder.Entity("DataAccess.Entities.Torneo", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CampeonId")
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("CostoInscripcion")
@@ -86,6 +255,12 @@ namespace DataAccess.Migrations
                     b.Property<int>("Disciplina")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("EsPago")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Modalidad")
                         .HasColumnType("INTEGER");
 
@@ -93,20 +268,125 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CampeonId");
 
                     b.ToTable("Torneos");
                 });
 
+            modelBuilder.Entity("DataAccess.Entities.Usuario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Apellido")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Dni")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PasswordResetTokenExpiration")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("RequiereCambioPassword")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Rol")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SedeAsignada")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Telefono")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TorneosAsignadosIds")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Dni")
+                        .IsUnique();
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("Usuarios");
+                });
+
             modelBuilder.Entity("DataAccess.Entities.Equipo", b =>
                 {
+                    b.HasOne("DataAccess.Entities.Usuario", "Capitan")
+                        .WithMany()
+                        .HasForeignKey("CapitanId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("DataAccess.Entities.Torneo", "Torneo")
                         .WithMany("Equipos")
                         .HasForeignKey("TorneoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("Capitan");
+
                     b.Navigation("Torneo");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.Incidencia", b =>
+                {
+                    b.HasOne("DataAccess.Entities.Equipo", "Equipo")
+                        .WithMany()
+                        .HasForeignKey("EquipoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccess.Entities.Jugador", "Jugador")
+                        .WithMany()
+                        .HasForeignKey("JugadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccess.Entities.Partido", "Partido")
+                        .WithMany()
+                        .HasForeignKey("PartidoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Equipo");
+
+                    b.Navigation("Jugador");
+
+                    b.Navigation("Partido");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.Jugador", b =>
@@ -120,6 +400,58 @@ namespace DataAccess.Migrations
                     b.Navigation("Equipo");
                 });
 
+            modelBuilder.Entity("DataAccess.Entities.Partido", b =>
+                {
+                    b.HasOne("DataAccess.Entities.Equipo", "EquipoLocal")
+                        .WithMany()
+                        .HasForeignKey("EquipoLocalId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DataAccess.Entities.Equipo", "EquipoVisitante")
+                        .WithMany()
+                        .HasForeignKey("EquipoVisitanteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DataAccess.Entities.Torneo", "Torneo")
+                        .WithMany("Partidos")
+                        .HasForeignKey("TorneoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccess.Entities.Usuario", "Veedor")
+                        .WithMany()
+                        .HasForeignKey("VeedorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("EquipoLocal");
+
+                    b.Navigation("EquipoVisitante");
+
+                    b.Navigation("Torneo");
+
+                    b.Navigation("Veedor");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.Publicidad", b =>
+                {
+                    b.HasOne("DataAccess.Entities.Torneo", "Torneo")
+                        .WithMany()
+                        .HasForeignKey("TorneoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Torneo");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.Torneo", b =>
+                {
+                    b.HasOne("DataAccess.Entities.Equipo", "Campeon")
+                        .WithMany()
+                        .HasForeignKey("CampeonId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Campeon");
+                });
+
             modelBuilder.Entity("DataAccess.Entities.Equipo", b =>
                 {
                     b.Navigation("Jugadores");
@@ -128,6 +460,8 @@ namespace DataAccess.Migrations
             modelBuilder.Entity("DataAccess.Entities.Torneo", b =>
                 {
                     b.Navigation("Equipos");
+
+                    b.Navigation("Partidos");
                 });
 #pragma warning restore 612, 618
         }

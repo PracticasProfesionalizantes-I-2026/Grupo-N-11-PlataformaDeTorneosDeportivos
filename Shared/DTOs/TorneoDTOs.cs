@@ -222,5 +222,7 @@ namespace Shared.DTOs
         public bool EsPago { get; set; }
         public decimal CostoInscripcion { get; set; }
         public string Estado { get; set; } = string.Empty;
+        public Guid? CampeonId { get; set; }
+        public string? CampeonNombre { get; set; }
     }
 }

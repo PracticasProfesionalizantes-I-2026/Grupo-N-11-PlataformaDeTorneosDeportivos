@@ -140,5 +140,104 @@ namespace API.IntegrationTests
             // Assert
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
+
+        [Fact]
+        public async Task FlujoPrimerIngresoVeedor_CambioPasswordObligatorio_FuncionaCorrectamente()
+        {
+            // 1. Crear veedor por API (recibiendo contraseña provisoria)
+            var uniqueDni = $"{Random.Shared.Next(10000000, 99999999)}";
+            var uniqueEmail = $"veedor_auth_{Guid.NewGuid():N}@torneos.com";
+
+            var createDto = new VeedorCreateDTO
+            {
+                Nombre = "Veedor Flujo",
+                Apellido = "Autenticacion",
+                Dni = uniqueDni,
+                Email = uniqueEmail
+            };
+
+            var createResponse = await _client.PostAsJsonAsync("/api/veedores", createDto);
+            Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+            var veedorCreado = await createResponse.Content.ReadFromJsonAsync<VeedorResponseDTO>();
+            Assert.NotNull(veedorCreado);
+            Assert.False(string.IsNullOrWhiteSpace(veedorCreado.PasswordTemporal));
+            Assert.True(veedorCreado.RequiereCambioPassword);
+
+            var tempPassword = veedorCreado.PasswordTemporal;
+
+            // 2. Primer login con contraseña provisoria
+            var loginDto = new LoginRequestDTO
+            {
+                EmailOrDni = uniqueEmail,
+                Password = tempPassword
+            };
+
+            var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", loginDto);
+            Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+            var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDTO>();
+            Assert.NotNull(loginResult);
+            Assert.True(loginResult.RequiereCambioPassword, "El veedor recién creado debe requerir cambio de contraseña");
+
+            // 3. Intento de cambio con contraseña idéntica a la provisoria -> Debe rechazar (400 Bad Request)
+            var cambioMismaClaveDto = new CambiarPasswordInicialDTO
+            {
+                EmailOrDni = uniqueEmail,
+                PasswordActual = tempPassword,
+                NuevaPassword = tempPassword
+            };
+
+            var rechazoResponse = await _client.PostAsJsonAsync("/api/auth/cambiar-password", cambioMismaClaveDto);
+            Assert.Equal(HttpStatusCode.BadRequest, rechazoResponse.StatusCode);
+
+            // 4. Intento de cambio con contraseña actual errónea -> 401 Unauthorized
+            var cambioClaveErroneaDto = new CambiarPasswordInicialDTO
+            {
+                EmailOrDni = uniqueEmail,
+                PasswordActual = "ClaveIncorrecta123!",
+                NuevaPassword = "NuevaPasswordDefinitiva2026!"
+            };
+
+            var errPasswordResponse = await _client.PostAsJsonAsync("/api/auth/cambiar-password", cambioClaveErroneaDto);
+            Assert.Equal(HttpStatusCode.Unauthorized, errPasswordResponse.StatusCode);
+
+            // 5. Cambio exitoso de contraseña mediante /api/auth/primer-ingreso
+            var nuevaPasswordValida = "NuevaPasswordDefinitiva2026!";
+            var cambioValidoDto = new CambiarPasswordInicialDTO
+            {
+                EmailOrDni = uniqueEmail,
+                PasswordActual = tempPassword,
+                NuevaPassword = nuevaPasswordValida
+            };
+
+            var cambioExitosoResponse = await _client.PostAsJsonAsync("/api/auth/primer-ingreso", cambioValidoDto);
+            Assert.Equal(HttpStatusCode.OK, cambioExitosoResponse.StatusCode);
+            var cambioResult = await cambioExitosoResponse.Content.ReadFromJsonAsync<CambiarPasswordResponseDTO>();
+            Assert.NotNull(cambioResult);
+            Assert.True(cambioResult.Exito);
+            Assert.False(string.IsNullOrWhiteSpace(cambioResult.Token));
+
+            // 6. Intento de login con la contraseña provisoria anterior -> Debe fallar (401 Unauthorized)
+            var loginViejoDto = new LoginRequestDTO
+            {
+                EmailOrDni = uniqueEmail,
+                Password = tempPassword
+            };
+
+            var loginViejoResponse = await _client.PostAsJsonAsync("/api/auth/login", loginViejoDto);
+            Assert.Equal(HttpStatusCode.Unauthorized, loginViejoResponse.StatusCode);
+
+            // 7. Login con la nueva contraseña definitiva -> 200 OK y RequiereCambioPassword == false
+            var loginNuevoDto = new LoginRequestDTO
+            {
+                EmailOrDni = uniqueEmail,
+                Password = nuevaPasswordValida
+            };
+
+            var loginNuevoResponse = await _client.PostAsJsonAsync("/api/auth/login", loginNuevoDto);
+            Assert.Equal(HttpStatusCode.OK, loginNuevoResponse.StatusCode);
+            var loginNuevoResult = await loginNuevoResponse.Content.ReadFromJsonAsync<LoginResponseDTO>();
+            Assert.NotNull(loginNuevoResult);
+            Assert.False(loginNuevoResult.RequiereCambioPassword, "Tras el cambio obligatorio, la bandera debe quedar en false");
+        }
     }
 }

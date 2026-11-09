@@ -29,8 +29,11 @@ Permite al Veedor o Administrador cargar únicamente el marcador final de un par
    - Si el torneo es de modalidad "Eliminación Directa" y los marcadores están empatados, valida que se hayan remitido los resultados de penales/desempate y que definan un ganador unívoco (no empate en penales).
    - Asigna los marcadores definitivos y cambia el estado del partido a `Finalizado`.
 4. La **Capa de Persistencia** actualiza el registro en la tabla `Partidos`.
-5. El Sistema desencadena la actualización de las tablas de posiciones o el avance del clasificado a la siguiente ronda de llaves (brackets).
-6. El Sistema devuelve un código **200 OK** con el payload `PartidoResponseDTO` confirmando el marcador y estado final.
+5. **Avance de Llaves y Coronación (Eliminación Directa):**
+   - Si el torneo es de `Modalidad.EliminacionDirecta`:
+     - Al completarse los partidos del cruce en la ronda actual (ej. ambas semifinales), el Sistema crea y programa automáticamente el partido de la siguiente ronda (ej. la Final) emparejando a los ganadores en estado `Pendiente`.
+     - Si el partido finalizado corresponde a la última ronda (la Final), el Sistema proclama al ganador como campeón (`torneo.CampeonId`), transiciona el torneo a `EstadoTorneo.Finalizado` y actualiza la entidad `Torneo`.
+6. El Sistema devuelve un código **200 OK** con el payload `PartidoResultadoResponseDTO` confirmando el marcador, estado y ganador.
 
 ### 4. FLUJOS ALTERNATIVOS (Caminos Tristes / Excepciones)
 
@@ -79,6 +82,8 @@ Permite al Veedor o Administrador cargar únicamente el marcador final de un par
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
 | Flujo principal | `200 OK` | `LoadResultadoAsync_UpdatesScoreAndStatus`<br>`LoadResultadoAsync_WhenDrawInEliminationPhaseWithValidPenales_UpdatesScoreAndStatus` | `UpdateResultado_Returns200OK` |
+| Avance de llaves (Ronda previa -> Final) | `200 OK` | `LoadResultadoAsync_EliminacionDirecta_WhenBothSemifinalsFinished_CreatesFinalMatch`<br>`LoadResultadoAsync_EliminacionDirecta_WhenOnlyOneMatchOfPairFinished_DoesNotCreateNextRound` | `Test1_Torneo4Equipos_AvanceDeSemifinalAFinal_CreaPartidoFinalAutomaticamente`<br>`Test3_Torneo8Equipos_ProgresionCompleta_Cuartos_Semifinal_Final_HastaFinalizado` |
+| Partido Final y coronación | `200 OK` | `LoadResultadoAsync_EliminacionDirecta_WhenFinalMatchFinished_DeclaresChampionAndFinalizesTorneo` | `Test2_Torneo4Equipos_PartidoFinalDeclaraCampeonYFinalizaTorneo` |
 | 2a. Marcadores inválidos | `400 Bad Request` | `LoadResultadoAsync_WhenNegativeScore_ThrowsValidationException` | `UpdateResultado_WithNegativeScores_Returns400BadRequest`<br>`CU10_CargarResultado_MarcadorNegativo_Retorna400BadRequest`<br>`Vector3_AtaquesNumericosEnCostosMarcadoresYMinutos_Retorna400BadRequest` |
 | 3a. Partido Inexistente | `404 Not Found` | `LoadResultadoAsync_WhenPartidoNotFound_ThrowsNotFound` | `CU10_CargarResultado_PartidoInexistente_Retorna404NotFound` |
 | 3b. Partido cerrado | `409 Conflict` | `LoadResultadoAsync_WhenPartidoAlreadyFinished_ThrowsConflict` | `UpdateResultado_WhenPartidoClosed_Returns409Conflict` |

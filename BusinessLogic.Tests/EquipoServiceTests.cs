@@ -397,7 +397,7 @@ namespace BusinessLogic.Tests
                                  .ReturnsAsync(equiposConfirmados);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<BusinessRuleConflictException>(() => _equipoService.CambiarEstadoAsync(equipoId, "InscritoYConfirmado"));
+            var ex = await Assert.ThrowsAsync<TorneoCupoLlenoException>(() => _equipoService.CambiarEstadoAsync(equipoId, "InscritoYConfirmado"));
             Assert.Contains("cupo máximo", ex.Message);
         }
 
@@ -577,5 +577,212 @@ namespace BusinessLogic.Tests
 
             Assert.Equal("El DNI debe contener solo números.", ex.Message);
         }
+
+        [Fact]
+        public void JugadorPublicResponseDTO_DoesNotExposeSensitivePIIProperties()
+        {
+            // Assert (RNF-04: Privacidad de datos personales)
+            var type = typeof(JugadorPublicResponseDTO);
+            Assert.Null(type.GetProperty("Dni"));
+            Assert.Null(type.GetProperty("DocumentacionUrl"));
+            Assert.Null(type.GetProperty("Telefono"));
+            Assert.Null(type.GetProperty("Email"));
+            Assert.NotNull(type.GetProperty("Id"));
+            Assert.NotNull(type.GetProperty("Nombre"));
+            Assert.NotNull(type.GetProperty("Apellido"));
+            Assert.NotNull(type.GetProperty("EquipoId"));
+        }
+
+        [Fact]
+        public async Task GetByIdPublicAsync_ReturnsPublicDTOWithoutPII()
+        {
+            // Arrange
+            var equipoId = Guid.NewGuid();
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Los Pumas",
+                TorneoId = Guid.NewGuid(),
+                Jugadores = new List<Jugador>
+                {
+                    new() { Id = Guid.NewGuid(), Nombre = "Agustin", Apellido = "Pichot", Dni = "25111222", DocumentacionUrl = "https://privado.com/doc.pdf", EquipoId = equipoId }
+                }
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdWithTorneoAndJugadoresAsync(equipoId))
+                .ReturnsAsync(equipo);
+
+            // Act
+            var result = await _equipoService.GetByIdPublicAsync(equipoId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal("Los Pumas", result.Nombre);
+            Assert.Single(result.Jugadores);
+            var jugadorPublico = result.Jugadores.First();
+            Assert.Equal("Agustin", jugadorPublico.Nombre);
+            Assert.Equal("Pichot", jugadorPublico.Apellido);
+            Assert.Null(typeof(JugadorPublicResponseDTO).GetProperty("Dni"));
+        }
+
+        [Fact]
+        public async Task GetByIdDetalladoAsync_Organizador_ReturnsFullDTOWithDniAndDocumentacion()
+        {
+            // Arrange
+            var equipoId = Guid.NewGuid();
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Los Pumas",
+                TorneoId = Guid.NewGuid(),
+                Jugadores = new List<Jugador>
+                {
+                    new() { Id = Guid.NewGuid(), Nombre = "Agustin", Apellido = "Pichot", Dni = "25111222", DocumentacionUrl = "https://privado.com/doc.pdf", EquipoId = equipoId }
+                }
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdWithTorneoAndJugadoresAsync(equipoId))
+                .ReturnsAsync(equipo);
+
+            // Act
+            var result = await _equipoService.GetByIdDetalladoAsync(equipoId, Guid.NewGuid(), "Organizador");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Single(result.Jugadores);
+            Assert.Equal("25111222", result.Jugadores.First().Dni);
+            Assert.Equal("https://privado.com/doc.pdf", result.Jugadores.First().DocumentacionUrl);
+        }
+
+        [Fact]
+        public async Task GetByIdDetalladoAsync_CapitanPropio_ReturnsFullDTOWithDniAndDocumentacion()
+        {
+            // Arrange
+            var equipoId = Guid.NewGuid();
+            var capitanId = Guid.NewGuid();
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Los Pumas",
+                CapitanId = capitanId,
+                TorneoId = Guid.NewGuid(),
+                Jugadores = new List<Jugador>
+                {
+                    new() { Id = Guid.NewGuid(), Nombre = "Agustin", Apellido = "Pichot", Dni = "25111222", DocumentacionUrl = "https://privado.com/doc.pdf", EquipoId = equipoId }
+                }
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdWithTorneoAndJugadoresAsync(equipoId))
+                .ReturnsAsync(equipo);
+
+            // Act
+            var result = await _equipoService.GetByIdDetalladoAsync(equipoId, capitanId, "Capitan");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Single(result.Jugadores);
+            Assert.Equal("25111222", result.Jugadores.First().Dni);
+        }
+
+        [Fact]
+        public async Task GetByIdDetalladoAsync_OtroCapitan_ThrowsForbiddenException()
+        {
+            // Arrange
+            var equipoId = Guid.NewGuid();
+            var capitanPropietario = Guid.NewGuid();
+            var otroCapitan = Guid.NewGuid();
+            var equipo = new Equipo
+            {
+                Id = equipoId,
+                Nombre = "Los Pumas",
+                CapitanId = capitanPropietario,
+                TorneoId = Guid.NewGuid()
+            };
+
+            _equipoRepositoryMock.Setup(r => r.GetByIdWithTorneoAndJugadoresAsync(equipoId))
+                .ReturnsAsync(equipo);
+
+            // Act & Assert (RNF-04: Bloqueo de acceso PII para usuarios no autorizados)
+            var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+                _equipoService.GetByIdDetalladoAsync(equipoId, otroCapitan, "Capitan"));
+            Assert.Contains("permisos", ex.Message);
+        }
+
+        #region Mitigación IDOR en Creación de Equipos (CU-05)
+
+        [Fact]
+        public async Task CreateEquipoAsync_CapitanIntentandoCrearConCapitanIdAjeno_ThrowsForbiddenException()
+        {
+            // Arrange
+            var torneoId = Guid.NewGuid();
+            var capitanAutenticado = Guid.NewGuid();
+            var capitanVictima = Guid.NewGuid();
+
+            var dto = new EquipoCreateDTO
+            {
+                Nombre = "Equipo Spoofing",
+                TorneoId = torneoId,
+                CapitanId = capitanVictima,
+                Jugadores = new List<JugadorCreateDTO>
+                {
+                    new() { Nombre = "Juan", Apellido = "Perez", Dni = "30111222" }
+                }
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+                _equipoService.CreateEquipoAsync(torneoId, dto, capitanAutenticado, "Capitan"));
+
+            Assert.Contains("No tiene permisos para registrar un equipo a nombre de otro capitán", ex.Message);
+        }
+
+        [Fact]
+        public async Task CreateEquipoAsync_CapitanCreandoSuEquipo_AsignaCapitanIdCorrectamente()
+        {
+            // Arrange
+            var torneoId = Guid.NewGuid();
+            var capitanAutenticado = Guid.NewGuid();
+
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Torneo Apertura",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                Estado = EstadoTorneo.Abierto
+            };
+
+            var dto = new EquipoCreateDTO
+            {
+                Nombre = "Equipo Legítimo",
+                TorneoId = torneoId,
+                CapitanId = null, // Viene sin especificar o null
+                Jugadores = new List<JugadorCreateDTO>
+                {
+                    new() { Nombre = "Lionel", Apellido = "Messi", Dni = "33111222" },
+                    new() { Nombre = "Angel", Apellido = "DiMaria", Dni = "33111223" },
+                    new() { Nombre = "Emiliano", Apellido = "Martinez", Dni = "33111224" },
+                    new() { Nombre = "Rodrigo", Apellido = "DePaul", Dni = "33111225" },
+                    new() { Nombre = "Julian", Apellido = "Alvarez", Dni = "33111226" },
+                    new() { Nombre = "Cristian", Apellido = "Romero", Dni = "33111227" },
+                    new() { Nombre = "Nicolas", Apellido = "Otamendi", Dni = "33111228" }
+                }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetByIdAsync(torneoId)).ReturnsAsync(torneo);
+            _equipoRepositoryMock.Setup(r => r.ExistsNombreInTorneoAsync(torneoId, It.IsAny<string>())).ReturnsAsync(false);
+            _jugadorRepositoryMock.Setup(r => r.GetJugadoresByTorneoIdAsync(torneoId)).ReturnsAsync(new List<Jugador>());
+            _equipoRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Equipo>())).ReturnsAsync((Equipo e) => e);
+
+            // Act
+            var result = await _equipoService.CreateEquipoAsync(torneoId, dto, capitanAutenticado, "Capitan");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(capitanAutenticado, result.CapitanId);
+        }
+
+        #endregion
     }
 }

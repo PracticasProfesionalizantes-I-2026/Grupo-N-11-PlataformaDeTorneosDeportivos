@@ -32,5 +32,12 @@ namespace API.Controllers
             var result = await _inscripcionService.RechazarInscripcionAsync(torneoId, equipoId, dto);
             return Ok(result);
         }
+
+        [HttpPatch("validar-pago")]
+        public async Task<IActionResult> ValidarPago(Guid torneoId, Guid equipoId, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] ValidarPagoDTO? dto = null)
+        {
+            var result = await _inscripcionService.ValidarPagoAsync(torneoId, equipoId, dto);
+            return Ok(result);
+        }
     }
 }

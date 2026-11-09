@@ -62,9 +62,14 @@ Permite al Organizador auditar las solicitudes de inscripción de los equipos, a
   3. El Sistema devuelve un código **409 Conflict** con el mensaje: `"No se puede confirmar la inscripción: el cupo del torneo se encuentra completo (RN-06)"`. Fin del caso de uso.
 
 * **3c. Pago no validado en torneo arancelado (HTTP 422 Unprocessable Entity):**
-  1. Si en el Paso 3 el torneo es de pago pero el equipo no cuenta con un pago acreditado y validado, violando la regla **RN-06**.
+  1. Si en el Paso 3 el torneo es de pago pero el equipo no cuenta con un pago acreditado y validado (`PagoValidado == false` o sin `ComprobanteUrl` cargado), violando la regla **RN-06**.
   2. El Sistema (Capa de Negocio) lanza `PagoRequeridoException`.
   3. El Sistema devuelve un código **422 Unprocessable Entity** con el mensaje: `"No es posible confirmar la inscripción sin acreditar el pago correspondiente (RN-06)"`. Fin del caso de uso.
+
+* **3e. Validación previa del comprobante de pago (Paso Previo para Torneos Pagos - HTTP 200 OK / 422):**
+  1. El Organizador evalúa el comprobante y envía una petición a `PATCH /api/torneos/{torneoId}/equipos/{equipoId}/validar-pago` (o `PATCH /api/equipos/{id}/validar-pago`), opcionalmente suministrando `ComprobanteUrl` actualizado en el cuerpo.
+  2. Si el torneo es pago y no existe comprobante cargado ni suministrado, la Capa de Negocio lanza `PagoRequeridoException` con código **422 Unprocessable Entity**.
+  3. Si el comprobante es válido, la Capa de Negocio establece `PagoValidado = true`, persiste la transacción y devuelve un código **200 OK** con `ValidarPagoResponseDTO`, habilitando la posterior confirmación del cupo.
 
 * **3d. Rechazo de la solicitud con observaciones (Camino Alternativo - HTTP 200 OK):**
   1. Si el Organizador opta por observar o rechazar la solicitud, envía una petición a `PATCH /api/torneos/{torneoId}/equipos/{equipoId}/rechazar` incluyendo obligatoriamente el atributo `motivoRechazo` (o `motivo`), con una longitud válida entre 3 y 500 caracteres sin caracteres peligrosos.
@@ -112,11 +117,16 @@ Permite al Organizador auditar las solicitudes de inscripción de los equipos, a
 | --- | --- | --- | --- |
 | Flujo principal (Aprobación) | `200 OK` | `AprobarInscripcionAsync_WithValidData_ReturnsAprobadoDTOAndDecrementsCupo` | `AprobarInscripcion_WithValidTeam_Returns200Ok` |
 | Flujo principal (Último cupo confirmado) | `200 OK` | `AprobarInscripcionAsync_WhenLastSpotConfirmed_ClosesTournamentInscriptions` | `AprobarInscripcion_WhenLastSpotConfirmed_TransitionsTournamentToInscripcionesCerradas` |
+| Cambio de estado vía `PUT /api/equipos/{id}/estado` (Confirmación) | `200 OK` | `CambiarEstadoEquipoAsync_ExitosoInscritoYConfirmado_SetsEdicionListaHabilitadaFalse` | `CambiarEstado_AprobarExitoso_Retorna200OKYDeshabilitaEdicion` |
+| Cambio de estado vía `PUT /api/equipos/{id}/estado` (Rechazo/Observación) | `200 OK` | `CambiarEstadoEquipoAsync_ExitosoRechazadoObservado_SetsEdicionListaHabilitadaTrue` | `CambiarEstado_RechazarObservar_Retorna200OKYHabilitaEdicion` |
 | 1a. Identificadores inválidos | `400 Bad Request` | — (validación de ruta / model binding) | `AprobarInscripcion_WithMalformedIds_Returns400BadRequest`<br>`Fuzzing_GuidMalformadoEnRuta_Retorna400BadRequest` |
 | 2a. Torneo o equipo inexistente | `404 Not Found` | `AprobarInscripcionAsync_WhenEntityDoesNotExist_ThrowsRecursoNotFoundException` | `AprobarInscripcion_WhenNotFound_Returns404NotFound`<br>`CU06_AprobarInscripcion_TorneoOEquipoInexistente_Retorna404NotFound` |
-| 3a. Estado no pendiente | `409 Conflict` | `AprobarInscripcionAsync_WhenTeamNotPending_ThrowsEstadoEquipoInvalidoException` | `AprobarInscripcion_WhenTeamAlreadyProcessed_Returns409Conflict` |
-| 3b. Cupo lleno (RN-06) | `409 Conflict` | `AprobarInscripcionAsync_WhenTournamentFull_ThrowsTorneoCupoLlenoException` | `AprobarInscripcion_WhenTournamentFull_Returns409Conflict` |
-| 3c. Pago no validado (RN-06) | `422 Unprocessable Entity` | `AprobarInscripcionAsync_WhenPagoNotValidated_ThrowsPagoRequeridoException` | `AprobarInscripcion_WhenUnpaidTournament_Returns422UnprocessableEntity` |
+| 3a. Estado no pendiente | `409 Conflict` | `AprobarInscripcionAsync_WhenTeamNotPending_ThrowsEstadoEquipoInvalidoException`<br>`CambiarEstadoEquipoAsync_EstadoOrigenInvalido_ThrowsEstadoEquipoInvalidoException` | `AprobarInscripcion_WhenTeamAlreadyProcessed_Returns409Conflict`<br>`CambiarEstado_EquipoYaConfirmado_Retorna409Conflict` |
+| 3b. Cupo lleno (RN-06) | `409 Conflict` | `AprobarInscripcionAsync_WhenTournamentFull_ThrowsTorneoCupoLlenoException`<br>`CambiarEstadoEquipoAsync_TorneoLleno_ThrowsTorneoCupoLlenoException` | `AprobarInscripcion_WhenTournamentFull_Returns409Conflict`<br>`CambiarEstado_TorneoLleno_Retorna409Conflict` |
+| 3c. Pago no validado (RN-06) | `422 Unprocessable Entity` | `AprobarInscripcionAsync_WhenPagoNotValidated_ThrowsPagoRequeridoException`<br>`CambiarEstadoEquipoAsync_TorneoPagoSinPagoValidado_ThrowsPagoRequeridoException`<br>`AprobarInscripcionAsync_TorneoPagoConPagoValidadoPeroSinComprobanteUrl_ThrowsPagoRequeridoException` | `AprobarInscripcion_WhenUnpaidTournament_Returns422UnprocessableEntity`<br>`CambiarEstado_TorneoPagoSinPagoValidado_Retorna422UnprocessableEntity`<br>`Test2_BloqueoAprobacionSinPagoValidado_EnTorneoArancelado_Retorna422UnprocessableEntity` |
+| 3e. Validación de pago exitosa | `200 OK` | `ValidarPagoAsync_ConComprobanteExistente_HabilitaPagoValidadoTrue`<br>`ValidarPagoAsync_SuministrandoComprobanteEnDTO_ActualizaComprobanteYHabilitaPagoValidadoTrue` | `Test3_FlujoCompletoLegitimoEnTorneoPago_ValidarPagoYAprobar_Retorna200Ok`<br>`ValidarPago_RutaEquiposDirecta_Retorna200Ok` |
+| 3e. Validación de pago sin comprobante | `422 Unprocessable Entity` | `ValidarPagoAsync_TorneoPagoSinComprobanteCargadoNiEnDTO_ThrowsPagoRequeridoException` | `ValidarPago_TorneoPagoSinComprobanteCargado_Retorna422UnprocessableEntity` |
+| Persistencia de `ComprobanteUrl` al crear equipo | `201 Created` | `CreateEquipoAsync_WithValidData_ReturnsCreatedEquipoDTO` | `Test1_CrearEquipoConComprobanteUrl_PersisteComprobanteYIniciaConPagoValidadoFalse` |
 | 3d. Rechazo con motivo (RN-03) | `200 OK` | `RechazarInscripcionAsync_WithReason_UnlocksListAndSetsObservado` | `RechazarInscripcion_WithValidReason_Returns200Ok` |
 | 3d. Rechazo sin motivo o inválido | `400 Bad Request` | `Vector2_InscripcionService_MotivoRechazoVacio_LanzaValidationException` | `RechazarInscripcion_WithEmptyReason_Returns400BadRequest`<br>`CU06_RechazarInscripcion_SinMotivo_Retorna400BadRequest` |
 

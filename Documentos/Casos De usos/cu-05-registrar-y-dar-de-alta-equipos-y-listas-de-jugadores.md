@@ -91,6 +91,11 @@ Permite a un Capitán registrar su equipo en la plataforma y cargar la lista de 
   2. El Sistema (Capa de Negocio) lanza `TorneoCupoLlenoException`.
   3. El Sistema devuelve un código **409 Conflict** con el mensaje: `"No se puede registrar el equipo: el torneo ya ha alcanzado su cupo máximo de equipos."`. Fin del caso de uso.
 
+* **3h. Intento de modificación o eliminación no autorizada sobre equipo ajeno (Ataque IDOR - HTTP 403 Forbidden):**
+  1. Si un usuario con rol de Capitán intenta registrar o eliminar jugadores en un equipo cuyo `CapitanId` no coincide con su identificador autenticado extraído de los claims JWT (`ClaimTypes.NameIdentifier`), o intenta registrar un equipo asociándolo a otro capitán.
+  2. El Sistema (Capa de Negocio / `JugadorService`, `EquipoService`) intercepta el intento de referencia directa insegura (IDOR) y lanza `ForbiddenException`.
+  3. El Sistema devuelve un código **403 Forbidden** con el mensaje: `"No tiene permisos para modificar o eliminar jugadores de un equipo que no le pertenece."`. Fin del caso de uso.
+
 * **4a. Error de persistencia transaccional (HTTP 500 Internal Server Error):**
   1. Si en el Paso 4 la Capa de Persistencia falla al almacenar el equipo o la lista de jugadores.
   2. El Sistema realiza rollback de la transacción y registra el fallo técnico.
@@ -114,6 +119,7 @@ Permite a un Capitán registrar su equipo en la plataforma y cargar la lista de 
 | --- | --- | --- |
 | `201` | Created | Registro exitoso del nuevo equipo y su lista de buena fe en estado Pendiente. |
 | `400` | Bad Request | Formato JSON roto, datos obligatorios faltantes o DNIs repetidos dentro de la misma lista. |
+| `403` | Forbidden | Intento de ataque IDOR: Capitán no propietario intenta agregar/eliminar jugadores o registrar equipo ajeno. |
 | `404` | Not Found | Inexistencia del torneo referenciado (`torneoId`) en la base de datos. |
 | `409` | Conflict | Torneo con inscripciones no disponibles, nombre de equipo duplicado o jugador ya inscripto en otro equipo (RN-02). |
 | `422` | Unprocessable Entity | Nómina de jugadores por debajo del mínimo reglamentario para la disciplina. |
@@ -141,5 +147,7 @@ Permite a un Capitán registrar su equipo en la plataforma y cargar la lista de 
 | 3e. Jugador ya inscripto en torneo (RN-02) | `409 Conflict` | `CreateEquipoAsync_WhenPlayerAlreadyInOtherTeam_ThrowsJugadorYaInscriptoException`<br>`CreateAsync_JugadorDuplicadoEnMismoTorneo_ThrowsBusinessRuleConflictException` | `CreateEquipo_WhenPlayerAlreadyRegisteredInTournament_Returns409Conflict`<br>`CU05_CreateEquipo_JugadorEnDosEquiposDelMismoTorneo_Retorna409Conflict_RN02` |
 | 3f. Nombre de equipo duplicado | `409 Conflict` | `CreateEquipoAsync_WhenTeamNameExistsInTournament_ThrowsEquipoNombreDuplicadoException` | `CreateEquipo_WhenDuplicateTeamName_Returns409Conflict` |
 | 3g. Torneo con cupo lleno | `409 Conflict` | `CreateEquipoAsync_WhenTournamentFull_ThrowsTorneoCupoLlenoException` | `CreateEquipo_WhenTournamentFull_Returns409Conflict` |
+| 3h. Ataque IDOR / Capitán ajeno | `403 Forbidden` | `DeleteAsync_CapitanAjeno_ThrowsForbiddenException`<br>`CreateAsync_CapitanAjeno_ThrowsForbiddenException`<br>`CreateEquipoAsync_CapitanIntentandoCrearConCapitanIdAjeno_ThrowsForbiddenException` | `CU05_AntiIDOR_CapitanAjeno_IntentaEliminarJugador_Retorna403Forbidden`<br>`CU05_AntiIDOR_CapitanAjeno_IntentaAgregarJugador_Retorna403Forbidden` |
+| Titularidad / Capitán dueño y Admin | `200 OK` / `204 NoContent` | `DeleteAsync_CapitanPropio_Succeeds`<br>`DeleteAsync_Organizador_EquipoAjeno_Succeeds`<br>`CreateAsync_CapitanPropio_Succeeds`<br>`CreateEquipoAsync_CapitanCreandoSuEquipo_AsignaCapitanIdCorrectamente` | `CU05_CapitanDuenio_OperacionesLegitimas_CrearYEliminarJugador_Exitoso`<br>`CU05_Organizador_EliminarJugadorDeCualquierEquipo_Exitoso`<br>`CU05_CrearEquipo_AsociaCapitanIdDesdeClaimsJWT` |
 
 > Regla de oro: cada flujo del caso de uso cuenta con al menos un test unitario o de integración HTTP. La suite de pruebas completa se ejecuta mediante `dotnet test`.
