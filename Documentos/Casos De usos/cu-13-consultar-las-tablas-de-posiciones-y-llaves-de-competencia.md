@@ -26,8 +26,8 @@ Permite a los usuarios consultar las tablas (puntos, PG, PE, PP, GF, GC, Dif) o 
 3. La **Capa de Negocio** (`TorneoService.GetPosicionesAsync` / `TorneoService.GetLlavesAsync`):
    - Verifica la existencia del torneo (lanza `NotFoundException` 404 si no existe).
    - Verifica la compatibilidad de modalidad (Liga para posiciones, Eliminación Directa para llaves; si no coincide, lanza `ValidationException` 400).
-4. La **Capa de Negocio** recupera los partidos finalizados y calcula dinámicamente:
-   - Para Liga: Puntos (3 victoria, 1 empate, 0 derrota), Partidos Jugados, PG, PE, PP, Goles a Favor, Goles en Contra y Diferencia de Gol. Aplica criterios de desempate ordenando por Puntos descendente, Diferencia de Gol descendente, Goles a Favor descendente y Nombre alfabético.
+4. La **Capa de Negocio** recupera los datos optimizados:
+   - Para Liga: Consulta la tabla persistida y precalculada `TablaPosicion` (mediante `ITablaPosicionRepository` y `AsNoTracking()`), ordenada por `Posicion`. En caso de que no existan registros previos o en entornos de prueba, calcula dinámicamente las posiciones aplicando criterios de desempate (Puntos descendente, Diferencia de Gol descendente, Goles a Favor descendente y Nombre alfabético) y persiste el resultado en la entidad `TablaPosicion` para optimizar futuras lecturas. Al registrarse resultados en `PartidoService`, las posiciones se recalculan y actualizan automáticamente.
    - Para Eliminación Directa: Estructura del bracket por rondas (Octavos, Cuartos, Semifinal, Final) con ganadores avanzando.
 5. El Sistema devuelve un código **200 OK** con la colección de `PosicionTablaDTO` o el árbol de `LlaveTorneoDTO`.
 
@@ -66,7 +66,7 @@ Permite a los usuarios consultar las tablas (puntos, PG, PE, PP, GF, GC, Dif) o 
 
 | Paso del CU | Excepción / Código | Test unitario (BusinessLogic) | Test integración (HTTP) |
 | --- | --- | --- | --- |
-| Flujo principal (Posiciones Liga) | `200 OK` | `GetPosicionesAsync_CalculatesAndReturnsStandings`<br>`GetPosicionesAsync_WithTieBreakers_SortsByDiferenciaGolesThenGolesAFavorThenNombre` | `GetPosiciones_Returns200OK` |
+| Flujo principal (Posiciones Liga) | `200 OK` | `GetPosicionesAsync_CalculatesAndReturnsStandings`<br>`GetPosicionesAsync_WithTieBreakers_SortsByDiferenciaGolesThenGolesAFavorThenNombre`<br>`GetPosicionesAsync_WhenPrecalculatedStandingsExist_ReturnsDirectlyFromRepository`<br>`GetPosicionesAsync_WhenStandingsNotPrecalculated_ComputesAndPersists` | `GetPosiciones_Returns200OK`<br>`GetPosiciones_WhenMatchesFinished_ReturnsOptimizedStandingsAndPersistsTablaPosiciones` |
 | Flujo principal (Llaves Brackets) | `200 OK` | `GetLlavesAsync_CalculatesAndReturnsBrackets` | `GetLlaves_Returns200OK` |
 | 3a. Posiciones en Eliminación Directa | `400 Bad Request` | `GetPosicionesAsync_WhenTorneoIsBrackets_ThrowsValidationException` | `GetPosiciones_WhenTorneoIsElimination_Returns400BadRequest`<br>`CU13_GetPosiciones_TorneoEliminacionDirecta_Retorna400BadRequest` |
 | 3a. Llaves en Liga | `400 Bad Request` | `GetLlavesAsync_WhenTorneoIsLiga_ThrowsValidationException` | `GetLlaves_WhenTorneoIsLiga_Returns400BadRequest` |

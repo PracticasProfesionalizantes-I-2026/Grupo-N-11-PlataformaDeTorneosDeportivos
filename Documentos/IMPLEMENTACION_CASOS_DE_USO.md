@@ -51,7 +51,7 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
 | **`404 Not Found`** | Recurso solicitado inexistente | `NotFoundException`, `TorneoNotFoundException`, `RecursoNotFoundException`, `DisciplinaNotFoundException` |
 | **`409 Conflict`** | Conflicto de estado o regla de negocio violada | `BusinessRuleConflictException`, `TorneoInscripcionCerradaException`, `JugadorYaInscriptoException`, `EquipoNombreDuplicadoException`, `TorneoNombreDuplicadoException`, `TorneoCupoLlenoException`, `EstadoEquipoInvalidoException` |
 | **`422 Unprocessable Entity`** | Parámetros semánticamente inconsistentes con las reglas de negocio | `CupoInvalidoEliminacionException`, `CuentaRecaudadoraInactivaException`, `MinimoJugadoresInsuficienteException`, `CostoInvalidoException`, `PagoRequeridoException` |
-| **`500 Internal Server Error`** | Error no contemplado | `Exception` no controlada |
+| **`500 Internal Server Error`** | Error no contemplado | `Exception` no controlada (en entornos no-Development oculta stack traces y mensajes internos para evitar fugas de información, retornando un mensaje genérico seguro y registrando el error detallado con `ILogger`) |
 
 ---
 
@@ -256,7 +256,7 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
 * **Descripción:** Permite al Organizador crear, actualizar datos o dar de baja lógica cuentas de veedores/árbitros para la fiscalización de partidos, con entrega de contraseña provisoria y cambio obligatorio en el primer inicio de sesión.
 * **Actor Principal:** Organizador / Administrador.
 * **Reglas de Negocio:**
-  - El veedor se crea con rol `RolUsuario.Veedor`.
+  - El veedor se crea con rol `RolUsuario.Veedor`. Al ser una variante de rol sobre la entidad `Usuario`, toda la lógica de validación de formato (DNI, Nombre, Apellido, Email, Teléfono, Contraseña) y control de unicidad se encuentra centralizada y reutilizada mediante `UsuarioValidationHelper` (principio DRY).
   - Validación de unicidad de DNI y Email (RN-10).
   - Al crearse, se puede suministrar una `PasswordInicial` o se genera automáticamente una contraseña provisoria segura.
   - La respuesta de creación (`VeedorResponseDTO`) entrega la `PasswordTemporal` generada y la bandera `RequiereCambioPassword = true`.
@@ -415,21 +415,26 @@ El middleware [ExceptionHandlingMiddleware](file:///e:/2do%20a%C3%B1o%20Desarrol
 * **Descripción:** Computa y expone la tabla clasificatoria (Puntos, PJ, PG, PE, PP, GF, GC, Dif) o el árbol de llaves (Brackets) según la modalidad del certamen.
 * **Actor Principal:** Público General.
 * **Reglas de Negocio:**
-  - Modalidad Liga: Cálculo dinámico de puntos (3 victoria, 1 empate, 0 derrota) y diferencia de goles/puntos.
+  - Modalidad Liga: La tabla se sirve de forma optimizada a través de la entidad persistida `TablaPosicion` (`ITablaPosicionRepository` con `AsNoTracking()`). Al finalizar cada partido en `PartidoService`, las posiciones se recalculan y actualizan automáticamente. Si la tabla aún no fue precalculada, se computa dinámicamente y se almacena en `TablaPosicion` para agilizar lecturas subsecuentes, previniendo sobrecarga en la base de datos o en memoria por escaneo masivo de partidos.
+  - Criterios de desempate en Liga: Puntos descendente, Diferencia de Gol descendente, Goles a Favor descendente y Nombre alfabético.
   - Modalidad Eliminación Directa: Estructuración de cruces por rondas (Octavos, Cuartos, Semifinal, Final).
 
 #### Componentes de Implementación:
-- **Controlador API:** [TorneosController.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/TorneosController.cs)
+- **Controlador API:** [TorneosController.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/API/Controllers/TorneosController.cs)
   - Endpoints:
     - `GET /api/torneos/{id}/posiciones`
     - `GET /api/torneos/{id}/llaves`
   - Códigos de Respuesta: `200 OK`, `400 Bad Request` (si se solicita tabla en torneo de eliminación directa), `404 Not Found`.
 - **Capa BusinessLogic:**
-  - Servicio: [TorneoService.cs](file:///e:/2do%20a%C3%B1o%20Desarrollo%20de%20software/Practica%20Profesionalizante%20I/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/TorneoService.cs)
+  - Servicio: [TorneoService.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Services/TorneoService.cs)
+  - Helper de cálculo: [StandingsCalculator.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/BusinessLogic/Common/StandingsCalculator.cs)
+- **Capa DataAccess:**
+  - Entidad: [TablaPosicion.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Entities/TablaPosicion.cs)
+  - Repositorio: [ITablaPosicionRepository.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Repositories/ITablaPosicionRepository.cs) / [TablaPosicionRepository.cs](file:///c:/PracticaProfe/Grupo-N-11-PlataformaDeTorneosDeportivos/DataAccess/Repositories/TablaPosicionRepository.cs)
 - **Contratos (Shared):**
   - DTOs: `PosicionTablaDTO`, `LlaveTorneoDTO`.
 - **Pruebas Automatizadas:**
-  - Unitarias: `TorneoServiceTests.cs`.
+  - Unitarias: `TorneoServiceTests.cs`, `StandingsOptimizationTests.cs`.
   - Integración: `TorneosIntegrationTests.cs`.
   - Archivos Bruno: `CU13_GetPosiciones_200_LigaExitoso.bru`, `CU13_GetLlaves_200_BracketsExitoso.bru`, `CU13_GetPosiciones_400_ModalidadIncompatible.bru`.
 

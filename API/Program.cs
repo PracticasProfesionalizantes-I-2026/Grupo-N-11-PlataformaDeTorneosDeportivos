@@ -70,6 +70,7 @@ namespace API
             builder.Services.AddScoped<IPartidoRepository, PartidoRepository>();
             builder.Services.AddScoped<IIncidenciaRepository, IncidenciaRepository>();
             builder.Services.AddScoped<IPublicidadRepository, PublicidadRepository>();
+            builder.Services.AddScoped<ITablaPosicionRepository, TablaPosicionRepository>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             // DI Services

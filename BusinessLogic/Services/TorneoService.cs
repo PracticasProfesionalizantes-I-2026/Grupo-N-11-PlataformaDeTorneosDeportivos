@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BusinessLogic.Common;
 using DataAccess.Entities;
 using DataAccess.Repositories;
 using Shared.DTOs;
@@ -15,15 +16,18 @@ namespace BusinessLogic.Services
         private readonly ITorneoRepository _torneoRepository;
         private readonly ICuentaRecaudadoraService? _cuentaRecaudadoraService;
         private readonly IPartidoRepository? _partidoRepository;
+        private readonly ITablaPosicionRepository? _tablaPosicionRepository;
 
         public TorneoService(
             ITorneoRepository torneoRepository,
             ICuentaRecaudadoraService? cuentaRecaudadoraService = null,
-            IPartidoRepository? partidoRepository = null)
+            IPartidoRepository? partidoRepository = null,
+            ITablaPosicionRepository? tablaPosicionRepository = null)
         {
             _torneoRepository = torneoRepository;
             _cuentaRecaudadoraService = cuentaRecaudadoraService;
             _partidoRepository = partidoRepository;
+            _tablaPosicionRepository = tablaPosicionRepository;
         }
 
         public async Task<IEnumerable<TorneoResponseDTO>> GetAllAsync()
@@ -375,6 +379,17 @@ namespace BusinessLogic.Services
             if (torneoId == Guid.Empty)
                 throw new ValidationException("El identificador del torneo no puede ser vacío.");
 
+            // Si hay repositorio y ya cuenta con posiciones persistidas para este torneo, las devolvemos directamente
+            if (_tablaPosicionRepository != null)
+            {
+                var persistidas = await _tablaPosicionRepository.GetByTorneoIdAsync(torneoId);
+                var listaPersistidas = persistidas?.ToList() ?? new List<TablaPosicion>();
+                if (listaPersistidas.Count > 0)
+                {
+                    return listaPersistidas.Select(StandingsCalculator.MapEntityToDTO).ToList();
+                }
+            }
+
             var torneo = await _torneoRepository.GetTorneoConEquiposAsync(torneoId);
             if (torneo == null)
             {
@@ -400,100 +415,13 @@ namespace BusinessLogic.Services
                 listaPartidos = torneo.Partidos.ToList();
             }
 
-            var equipos = (torneo.Equipos != null && torneo.Equipos.Any(e => e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado))
-                ? torneo.Equipos.Where(e => e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado).ToList()
-                : (torneo.Equipos?.ToList() ?? new List<Equipo>());
+            var resultadoOrdenado = StandingsCalculator.CalculateStandingsDTOs(torneo.Equipos, listaPartidos);
 
-            var tabla = new Dictionary<Guid, PosicionTablaDTO>();
-
-            foreach (var eq in equipos)
+            // Persistimos en la base de datos si contamos con el repositorio
+            if (_tablaPosicionRepository != null && resultadoOrdenado.Count > 0)
             {
-                tabla[eq.Id] = new PosicionTablaDTO
-                {
-                    EquipoId = eq.Id,
-                    EquipoNombre = eq.Nombre
-                };
-            }
-
-            var partidosFinalizados = listaPartidos
-                .Where(p => p.Estado == EstadoPartido.Finalizado || (p.MarcadorLocal.HasValue && p.MarcadorVisitante.HasValue))
-                .ToList();
-
-            foreach (var p in partidosFinalizados)
-            {
-                if (!p.EquipoLocalId.HasValue || !p.EquipoVisitanteId.HasValue)
-                    continue;
-
-                var localId = p.EquipoLocalId.Value;
-                var visId = p.EquipoVisitanteId.Value;
-
-                if (!tabla.TryGetValue(localId, out var localStats))
-                {
-                    localStats = new PosicionTablaDTO
-                    {
-                        EquipoId = localId,
-                        EquipoNombre = p.EquipoLocal?.Nombre ?? "Equipo Local"
-                    };
-                    tabla[localId] = localStats;
-                }
-
-                if (!tabla.TryGetValue(visId, out var visStats))
-                {
-                    visStats = new PosicionTablaDTO
-                    {
-                        EquipoId = visId,
-                        EquipoNombre = p.EquipoVisitante?.Nombre ?? "Equipo Visitante"
-                    };
-                    tabla[visId] = visStats;
-                }
-
-                int ml = p.MarcadorLocal ?? 0;
-                int mv = p.MarcadorVisitante ?? 0;
-
-                localStats.PartidosJugados++;
-                visStats.PartidosJugados++;
-
-                localStats.GolesAFavor += ml;
-                localStats.GolesEnContra += mv;
-                visStats.GolesAFavor += mv;
-                visStats.GolesEnContra += ml;
-
-                if (ml > mv)
-                {
-                    localStats.PartidosGanados++;
-                    localStats.Puntos += 3;
-                    visStats.PartidosPerdidos++;
-                }
-                else if (mv > ml)
-                {
-                    visStats.PartidosGanados++;
-                    visStats.Puntos += 3;
-                    localStats.PartidosPerdidos++;
-                }
-                else
-                {
-                    localStats.PartidosEmpatados++;
-                    localStats.Puntos += 1;
-                    visStats.PartidosEmpatados++;
-                    visStats.Puntos += 1;
-                }
-            }
-
-            foreach (var stat in tabla.Values)
-            {
-                stat.DiferenciaGoles = stat.GolesAFavor - stat.GolesEnContra;
-            }
-
-            var resultadoOrdenado = tabla.Values
-                .OrderByDescending(t => t.Puntos)
-                .ThenByDescending(t => t.DiferenciaGoles)
-                .ThenByDescending(t => t.GolesAFavor)
-                .ThenBy(t => t.EquipoNombre, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            for (int i = 0; i < resultadoOrdenado.Count; i++)
-            {
-                resultadoOrdenado[i].Posicion = i + 1;
+                var entidades = StandingsCalculator.CalculateStandingsEntities(torneoId, torneo.Equipos, listaPartidos);
+                await _tablaPosicionRepository.UpsertPosicionesTorneoAsync(torneoId, entidades);
             }
 
             return resultadoOrdenado;

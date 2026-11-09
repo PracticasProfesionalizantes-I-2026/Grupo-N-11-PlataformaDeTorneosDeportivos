@@ -237,6 +237,62 @@ namespace DataAccess.Migrations
                     b.ToTable("Publicidades");
                 });
 
+            modelBuilder.Entity("DataAccess.Entities.TablaPosicion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DiferenciaGoles")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("EquipoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EquipoNombre")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GolesAFavor")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GolesEnContra")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PartidosEmpatados")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PartidosGanados")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PartidosJugados")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PartidosPerdidos")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Posicion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Puntos")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("TorneoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UltimaActualizacion")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquipoId");
+
+                    b.HasIndex("TorneoId", "EquipoId")
+                        .IsUnique();
+
+                    b.ToTable("TablaPosiciones");
+                });
+
             modelBuilder.Entity("DataAccess.Entities.Torneo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -438,6 +494,25 @@ namespace DataAccess.Migrations
                         .WithMany()
                         .HasForeignKey("TorneoId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Torneo");
+                });
+
+            modelBuilder.Entity("DataAccess.Entities.TablaPosicion", b =>
+                {
+                    b.HasOne("DataAccess.Entities.Equipo", "Equipo")
+                        .WithMany()
+                        .HasForeignKey("EquipoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DataAccess.Entities.Torneo", "Torneo")
+                        .WithMany()
+                        .HasForeignKey("TorneoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Equipo");
 
                     b.Navigation("Torneo");
                 });

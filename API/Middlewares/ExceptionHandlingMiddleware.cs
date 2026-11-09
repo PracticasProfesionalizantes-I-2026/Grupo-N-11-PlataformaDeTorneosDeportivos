@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Shared.Exceptions;
 
 namespace API.Middlewares
@@ -11,10 +13,17 @@ namespace API.Middlewares
     public class ExceptionHandlingMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly IHostEnvironment? _environment;
+        private readonly ILogger<ExceptionHandlingMiddleware>? _logger;
 
-        public ExceptionHandlingMiddleware(RequestDelegate next)
+        public ExceptionHandlingMiddleware(
+            RequestDelegate next,
+            IHostEnvironment? environment = null,
+            ILogger<ExceptionHandlingMiddleware>? logger = null)
         {
             _next = next;
+            _environment = environment;
+            _logger = logger;
         }
 
         public async Task Invoke(HttpContext context)
@@ -29,7 +38,7 @@ namespace API.Middlewares
             }
         }
 
-        private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+        private Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             HttpStatusCode code;
             string message = exception.Message;
@@ -56,6 +65,7 @@ namespace API.Middlewares
                     break;
                 case DbUpdateConcurrencyException _:
                     code = HttpStatusCode.Conflict; // 409
+                    _logger?.LogWarning(exception, "Conflicto de concurrencia detectado al procesar {Method} {Path}.", context.Request?.Method, context.Request?.Path);
                     message = "El registro fue modificado simultáneamente por otro usuario. Por favor, reintente la operación.";
                     break;
                 case UsuarioDuplicadoException _:
@@ -77,7 +87,21 @@ namespace API.Middlewares
                     break;
                 default:
                     code = HttpStatusCode.InternalServerError; // 500
-                    message = "Ha ocurrido un error inesperado en el servidor.";
+                    _logger?.LogError(exception, "Error no controlado procesando la solicitud {Method} {Path}.", context.Request?.Method, context.Request?.Path);
+                    
+                    // En entornos que no sean Development (ej. Staging, Production), prevenir fugas de información
+                    if (_environment != null && !_environment.IsDevelopment())
+                    {
+                        message = "Ocurrió un error interno en el servidor.";
+                    }
+                    else if (_environment != null && _environment.IsDevelopment())
+                    {
+                        message = string.IsNullOrWhiteSpace(exception.Message) ? "Ocurrió un error interno en el servidor." : exception.Message;
+                    }
+                    else
+                    {
+                        message = "Ocurrió un error interno en el servidor.";
+                    }
                     break;
             }
 

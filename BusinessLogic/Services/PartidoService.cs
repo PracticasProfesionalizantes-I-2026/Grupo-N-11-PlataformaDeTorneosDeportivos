@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BusinessLogic.Common;
 using DataAccess.Entities;
 using DataAccess.Repositories;
 using Shared.DTOs;
@@ -15,15 +16,18 @@ namespace BusinessLogic.Services
         private readonly IPartidoRepository _partidoRepository;
         private readonly ITorneoRepository? _torneoRepository;
         private readonly IUnitOfWork? _unitOfWork;
+        private readonly ITablaPosicionRepository? _tablaPosicionRepository;
 
         public PartidoService(
             IPartidoRepository partidoRepository,
             ITorneoRepository? torneoRepository = null,
-            IUnitOfWork? unitOfWork = null)
+            IUnitOfWork? unitOfWork = null,
+            ITablaPosicionRepository? tablaPosicionRepository = null)
         {
             _partidoRepository = partidoRepository;
             _torneoRepository = torneoRepository;
             _unitOfWork = unitOfWork;
+            _tablaPosicionRepository = tablaPosicionRepository;
         }
 
         public async Task<PartidoResultadoResponseDTO> LoadResultadoAsync(Guid id, CargarResultadoDTO dto)
@@ -140,7 +144,19 @@ namespace BusinessLogic.Services
 
             // Obtener torneo
             var torneo = partido.Torneo ?? (_torneoRepository != null ? await _torneoRepository.GetByIdAsync(partido.TorneoId) : null);
-            if (torneo == null || torneo.Modalidad != Modalidad.EliminacionDirecta)
+            if (torneo == null)
+            {
+                return;
+            }
+
+            // Si es torneo de Liga, actualizar y persistir la tabla de posiciones inmediatamente
+            if (torneo.Modalidad == Modalidad.Liga && _tablaPosicionRepository != null)
+            {
+                await ActualizarTablaPosicionesLigaAsync(torneo.Id);
+                return;
+            }
+
+            if (torneo.Modalidad != Modalidad.EliminacionDirecta)
             {
                 return;
             }
@@ -319,6 +335,24 @@ namespace BusinessLogic.Services
                 GanadorNombre = ganadorNombre,
                 Mensaje = "Marcador y estado del partido guardados exitosamente."
             };
+        }
+
+        private async Task ActualizarTablaPosicionesLigaAsync(Guid torneoId)
+        {
+            if (_tablaPosicionRepository == null) return;
+
+            var torneoConEquipos = _torneoRepository != null
+                ? await _torneoRepository.GetTorneoConEquiposAsync(torneoId)
+                : null;
+
+            var equipos = torneoConEquipos?.Equipos;
+            var partidos = await _partidoRepository.GetPartidosByTorneoIdAsync(torneoId);
+
+            var entidades = StandingsCalculator.CalculateStandingsEntities(torneoId, equipos, partidos);
+            if (entidades.Count > 0)
+            {
+                await _tablaPosicionRepository.UpsertPosicionesTorneoAsync(torneoId, entidades);
+            }
         }
     }
 }

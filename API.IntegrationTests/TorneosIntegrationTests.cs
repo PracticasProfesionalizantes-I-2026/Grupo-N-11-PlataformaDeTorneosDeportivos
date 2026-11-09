@@ -554,6 +554,95 @@ namespace API.IntegrationTests
             // Assert - Debe responder 401 Unauthorized
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
+
+        [Fact]
+        public async Task GetPosiciones_WhenMatchesFinished_ReturnsOptimizedStandingsAndPersistsTablaPosiciones()
+        {
+            // Arrange
+            var torneoId = Guid.NewGuid();
+            var eq1Id = Guid.NewGuid();
+            var eq2Id = Guid.NewGuid();
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                var torneo = new Torneo
+                {
+                    Id = torneoId,
+                    Nombre = $"Liga Optimizada {Guid.NewGuid():N}",
+                    Disciplina = Disciplina.Futbol,
+                    Modalidad = Modalidad.Liga,
+                    CupoMaximo = 6,
+                    Estado = EstadoTorneo.EnDesarrollo,
+                    CostoInscripcion = 0
+                };
+                context.Torneos.Add(torneo);
+
+                var eq1 = new Equipo
+                {
+                    Id = eq1Id,
+                    Nombre = "Equipo Ganador",
+                    TorneoId = torneoId,
+                    EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+                };
+                var eq2 = new Equipo
+                {
+                    Id = eq2Id,
+                    Nombre = "Equipo Perdedor",
+                    TorneoId = torneoId,
+                    EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado
+                };
+                context.Equipos.AddRange(eq1, eq2);
+
+                var partido = new Partido
+                {
+                    Id = Guid.NewGuid(),
+                    TorneoId = torneoId,
+                    EquipoLocalId = eq1Id,
+                    EquipoVisitanteId = eq2Id,
+                    MarcadorLocal = 4,
+                    MarcadorVisitante = 1,
+                    Estado = EstadoPartido.Finalizado,
+                    Ronda = 1
+                };
+                context.Partidos.Add(partido);
+
+                await context.SaveChangesAsync();
+            }
+
+            // Act 1: Primera llamada a posiciones
+            var response1 = await _client.GetAsync($"/api/torneos/{torneoId}/posiciones");
+            response1.EnsureSuccessStatusCode();
+
+            var posiciones1 = await response1.Content.ReadFromJsonAsync<List<PosicionTablaDTO>>();
+            Assert.NotNull(posiciones1);
+            Assert.Equal(2, posiciones1.Count);
+            Assert.Equal(1, posiciones1[0].Posicion);
+            Assert.Equal("Equipo Ganador", posiciones1[0].EquipoNombre);
+            Assert.Equal(3, posiciones1[0].Puntos);
+            Assert.Equal(2, posiciones1[1].Posicion);
+            Assert.Equal("Equipo Perdedor", posiciones1[1].EquipoNombre);
+            Assert.Equal(0, posiciones1[1].Puntos);
+
+            // Verificar persistencia en base de datos en TablaPosiciones
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var persistidas = context.TablaPosiciones.Where(tp => tp.TorneoId == torneoId).ToList();
+                Assert.Equal(2, persistidas.Count);
+            }
+
+            // Act 2: Segunda llamada a posiciones (debe leer directamente de la tabla optimizada)
+            var response2 = await _client.GetAsync($"/api/torneos/{torneoId}/posiciones");
+            response2.EnsureSuccessStatusCode();
+
+            var posiciones2 = await response2.Content.ReadFromJsonAsync<List<PosicionTablaDTO>>();
+            Assert.NotNull(posiciones2);
+            Assert.Equal(2, posiciones2.Count);
+            Assert.Equal(1, posiciones2[0].Posicion);
+            Assert.Equal("Equipo Ganador", posiciones2[0].EquipoNombre);
+        }
     }
 }
 

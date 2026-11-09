@@ -18,6 +18,7 @@ namespace DataAccess.Data
         public DbSet<Partido> Partidos { get; set; } = null!;
         public DbSet<Incidencia> Incidencias { get; set; } = null!;
         public DbSet<Publicidad> Publicidades { get; set; } = null!;
+        public DbSet<TablaPosicion> TablaPosiciones { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -66,6 +67,22 @@ namespace DataAccess.Data
 
             modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<TablaPosicion>()
+                .HasOne(tp => tp.Torneo)
+                .WithMany()
+                .HasForeignKey(tp => tp.TorneoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TablaPosicion>()
+                .HasOne(tp => tp.Equipo)
+                .WithMany()
+                .HasForeignKey(tp => tp.EquipoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TablaPosicion>()
+                .HasIndex(tp => new { tp.TorneoId, tp.EquipoId })
                 .IsUnique();
         }
 

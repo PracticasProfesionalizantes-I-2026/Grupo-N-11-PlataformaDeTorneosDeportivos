@@ -1,6 +1,6 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
+using BusinessLogic.Common;
 using BusinessLogic.Security;
 using DataAccess.Entities;
 using DataAccess.Repositories;
@@ -34,74 +34,15 @@ namespace BusinessLogic.Services
                 throw new ValidationException("El rol de usuario especificado no es válido.");
             }
 
-            var normalizedDni = dto.Dni?.Trim() ?? string.Empty;
+            var normalizedDni = UsuarioValidationHelper.ValidateAndNormalizeDni(dto.Dni);
+            var nombreTrim = UsuarioValidationHelper.ValidateAndNormalizeNombre(dto.Nombre);
+            var apellidoTrim = UsuarioValidationHelper.ValidateAndNormalizeApellido(dto.Apellido);
+            var normalizedEmail = UsuarioValidationHelper.ValidateAndNormalizeEmail(dto.Email);
+            UsuarioValidationHelper.ValidatePassword(dto.Password);
+            var telefonoTrim = UsuarioValidationHelper.ValidateAndNormalizeTelefono(dto.Telefono);
 
-            if (string.IsNullOrWhiteSpace(normalizedDni) || !normalizedDni.All(c => c >= '0' && c <= '9'))
-            {
-                throw new ValidationException("El DNI debe contener solo números.");
-            }
+            await UsuarioValidationHelper.CheckUniquenessAsync(_usuarioRepository, normalizedEmail, normalizedDni);
 
-            if (normalizedDni.Length < 7 || normalizedDni.Length > 8)
-            {
-                throw new ValidationException("El DNI debe tener entre 7 y 8 dígitos numéricos.");
-            }
-
-            var nombreTrim = dto.Nombre?.Trim() ?? string.Empty;
-            var apellidoTrim = dto.Apellido?.Trim() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(nombreTrim) ||
-                nombreTrim.Length < 2 ||
-                nombreTrim.Length > 60 ||
-                !System.Text.RegularExpressions.Regex.IsMatch(nombreTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
-            {
-                throw new ValidationException("El nombre debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
-            }
-
-            if (string.IsNullOrWhiteSpace(apellidoTrim) ||
-                apellidoTrim.Length < 2 ||
-                apellidoTrim.Length > 60 ||
-                !System.Text.RegularExpressions.Regex.IsMatch(apellidoTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
-            {
-                throw new ValidationException("El apellido debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
-            }
-
-            var normalizedEmail = dto.Email?.Trim().ToLowerInvariant() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(normalizedEmail) || normalizedEmail.Length > 150 ||
-                normalizedEmail.Contains('<') || normalizedEmail.Contains('>') ||
-                !System.Text.RegularExpressions.Regex.IsMatch(normalizedEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-            {
-                throw new ValidationException("El formato del correo electrónico no es válido.");
-            }
-
-            if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 8 || dto.Password.Length > 128 ||
-                !dto.Password.Any(char.IsLetter) || !dto.Password.Any(char.IsDigit))
-            {
-                throw new ValidationException("La contraseña debe tener entre 8 y 128 caracteres e incluir letras y números.");
-            }
-
-            if (dto.Telefono != null)
-            {
-                var telTrim = dto.Telefono.Trim();
-                if (string.IsNullOrWhiteSpace(telTrim) || !System.Text.RegularExpressions.Regex.IsMatch(telTrim, @"^\+?[0-9]{8,15}$"))
-                {
-                    throw new ValidationException("El teléfono debe contener únicamente entre 8 y 15 dígitos numéricos (opcionalmente precedidos por '+').");
-                }
-            }
-
-            // RN-10: Verificar que ni el email ni el DNI se encuentren duplicados en la base de datos
-            var usuarioPorEmail = await _usuarioRepository.GetByEmailAsync(normalizedEmail);
-            if (usuarioPorEmail != null)
-            {
-                throw new UsuarioDuplicadoException();
-            }
-
-            var usuarioPorDni = await _usuarioRepository.GetByDniAsync(normalizedDni);
-            if (usuarioPorDni != null)
-            {
-                throw new UsuarioDuplicadoException();
-            }
-
-            // Hashear contraseña
             var passwordHash = _passwordHasher.HashPassword(dto.Password);
 
             // Prevención de Escalada de Privilegios (CU-01 / RNF-04):
@@ -113,7 +54,6 @@ namespace BusinessLogic.Services
                 ? Shared.Enums.RolUsuario.Capitan
                 : dto.Rol;
 
-            // Mapeo manual de DTO a entidad de dominio
             var usuario = new Usuario
             {
                 Id = Guid.NewGuid(),
@@ -121,7 +61,7 @@ namespace BusinessLogic.Services
                 Apellido = apellidoTrim,
                 Dni = normalizedDni,
                 Email = normalizedEmail,
-                Telefono = string.IsNullOrWhiteSpace(dto.Telefono) ? null : dto.Telefono.Trim(),
+                Telefono = telefonoTrim,
                 PasswordHash = passwordHash,
                 Rol = rolAsignado,
                 Activo = true,
@@ -150,71 +90,14 @@ namespace BusinessLogic.Services
                 throw new ValidationException("El rol de usuario especificado no es válido.");
             }
 
-            var normalizedDni = dto.Dni?.Trim() ?? string.Empty;
+            var normalizedDni = UsuarioValidationHelper.ValidateAndNormalizeDni(dto.Dni);
+            var nombreTrim = UsuarioValidationHelper.ValidateAndNormalizeNombre(dto.Nombre);
+            var apellidoTrim = UsuarioValidationHelper.ValidateAndNormalizeApellido(dto.Apellido);
+            var normalizedEmail = UsuarioValidationHelper.ValidateAndNormalizeEmail(dto.Email);
+            UsuarioValidationHelper.ValidatePassword(dto.Password);
+            var telefonoTrim = UsuarioValidationHelper.ValidateAndNormalizeTelefono(dto.Telefono);
 
-            if (string.IsNullOrWhiteSpace(normalizedDni) || !normalizedDni.All(c => c >= '0' && c <= '9'))
-            {
-                throw new ValidationException("El DNI debe contener solo números.");
-            }
-
-            if (normalizedDni.Length < 7 || normalizedDni.Length > 8)
-            {
-                throw new ValidationException("El DNI debe tener entre 7 y 8 dígitos numéricos.");
-            }
-
-            var nombreTrim = dto.Nombre?.Trim() ?? string.Empty;
-            var apellidoTrim = dto.Apellido?.Trim() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(nombreTrim) ||
-                nombreTrim.Length < 2 ||
-                nombreTrim.Length > 60 ||
-                !System.Text.RegularExpressions.Regex.IsMatch(nombreTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
-            {
-                throw new ValidationException("El nombre debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
-            }
-
-            if (string.IsNullOrWhiteSpace(apellidoTrim) ||
-                apellidoTrim.Length < 2 ||
-                apellidoTrim.Length > 60 ||
-                !System.Text.RegularExpressions.Regex.IsMatch(apellidoTrim, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
-            {
-                throw new ValidationException("El apellido debe tener entre 2 y 60 caracteres y contener únicamente letras y espacios.");
-            }
-
-            var normalizedEmail = dto.Email?.Trim().ToLowerInvariant() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(normalizedEmail) || normalizedEmail.Length > 150 ||
-                normalizedEmail.Contains('<') || normalizedEmail.Contains('>') ||
-                !System.Text.RegularExpressions.Regex.IsMatch(normalizedEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-            {
-                throw new ValidationException("El formato del correo electrónico no es válido.");
-            }
-
-            if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 8 || dto.Password.Length > 128 ||
-                !dto.Password.Any(char.IsLetter) || !dto.Password.Any(char.IsDigit))
-            {
-                throw new ValidationException("La contraseña debe tener entre 8 y 128 caracteres e incluir letras y números.");
-            }
-
-            if (dto.Telefono != null)
-            {
-                var telTrim = dto.Telefono.Trim();
-                if (string.IsNullOrWhiteSpace(telTrim) || !System.Text.RegularExpressions.Regex.IsMatch(telTrim, @"^\+?[0-9]{8,15}$"))
-                {
-                    throw new ValidationException("El teléfono debe contener únicamente entre 8 y 15 dígitos numéricos (opcionalmente precedidos por '+').");
-                }
-            }
-
-            var usuarioPorEmail = await _usuarioRepository.GetByEmailAsync(normalizedEmail);
-            if (usuarioPorEmail != null)
-            {
-                throw new UsuarioDuplicadoException();
-            }
-
-            var usuarioPorDni = await _usuarioRepository.GetByDniAsync(normalizedDni);
-            if (usuarioPorDni != null)
-            {
-                throw new UsuarioDuplicadoException();
-            }
+            await UsuarioValidationHelper.CheckUniquenessAsync(_usuarioRepository, normalizedEmail, normalizedDni);
 
             var passwordHash = _passwordHasher.HashPassword(dto.Password);
 
@@ -226,7 +109,7 @@ namespace BusinessLogic.Services
                 Apellido = apellidoTrim,
                 Dni = normalizedDni,
                 Email = normalizedEmail,
-                Telefono = string.IsNullOrWhiteSpace(dto.Telefono) ? null : dto.Telefono.Trim(),
+                Telefono = telefonoTrim,
                 PasswordHash = passwordHash,
                 Rol = dto.Rol,
                 Activo = true,
