@@ -120,7 +120,6 @@ namespace BusinessLogic.Services
 
             return MapToResponseDTO(usuario);
         }
-        }
 
         public async Task DeactivateVeedorAsync(Guid id)
         {
