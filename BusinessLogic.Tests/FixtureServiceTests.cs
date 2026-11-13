@@ -43,7 +43,7 @@ namespace BusinessLogic.Tests
                 Disciplina = Disciplina.Futbol,
                 Modalidad = Modalidad.Liga,
                 CupoMaximo = 8,
-                Estado = EstadoTorneo.Abierto,
+                Estado = EstadoTorneo.InscripcionesCerradas,
                 Equipos = new List<Equipo>
                 {
                     new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo A", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
@@ -83,9 +83,49 @@ namespace BusinessLogic.Tests
         }
 
         [Fact]
+        public async Task GenerarFixtureAsync_LigaWithTwoConfirmedTeams_ReturnsSuccess()
+        {
+            // Arrange: Modalidad.Liga requiere mínimo 2 equipos confirmados y estado InscripcionesCerradas
+            var torneoId = Guid.NewGuid();
+            var torneo = new Torneo
+            {
+                Id = torneoId,
+                Nombre = "Liga Mano a Mano 2026",
+                Disciplina = Disciplina.Futbol,
+                Modalidad = Modalidad.Liga,
+                CupoMaximo = 8,
+                Estado = EstadoTorneo.InscripcionesCerradas,
+                Equipos = new List<Equipo>
+                {
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo A", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo B", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId }
+                }
+            };
+
+            var dto = new GenerarFixtureRequestDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                Horarios = new List<string> { "14:00" },
+                Sedes = new List<string> { "Cancha Central" }
+            };
+
+            _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync(torneo);
+            _torneoRepositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Torneo>())).Returns(Task.CompletedTask);
+            _partidoRepositoryMock.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>())).Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _fixtureService.GenerarFixtureAsync(torneoId, dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(1, result.TotalPartidosGenerados);
+            Assert.Equal(EstadoTorneo.EnDesarrollo, torneo.Estado);
+        }
+
+        [Fact]
         public async Task GenerarFixtureAsync_WithoutMinimumTeams_ThrowsConflictException()
         {
-            // Arrange
+            // Arrange: Modalidad.Liga con solo 1 equipo confirmado (mínimo para Liga es 2)
             var torneoId = Guid.NewGuid();
             var torneo = new Torneo
             {
@@ -94,11 +134,11 @@ namespace BusinessLogic.Tests
                 Disciplina = Disciplina.Futbol,
                 Modalidad = Modalidad.Liga,
                 CupoMaximo = 8,
-                Estado = EstadoTorneo.Abierto,
+                Estado = EstadoTorneo.InscripcionesCerradas,
                 Equipos = new List<Equipo>
                 {
                     new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo A", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
-                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo B", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
+                    new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo B", EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion, TorneoId = torneoId },
                     new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo C", EstadoInscripcion = EstadoInscripcion.PendienteDeValidacion, TorneoId = torneoId }
                 }
             };
@@ -157,7 +197,7 @@ namespace BusinessLogic.Tests
             // Act & Assert
             var ex = await Assert.ThrowsAsync<TorneoEstadoInvalidoException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
             Assert.IsAssignableFrom<BusinessRuleConflictException>(ex);
-            Assert.Contains("Abierto", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Inscripciones Cerradas", ex.Message, StringComparison.OrdinalIgnoreCase);
 
             _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
             _partidoRepositoryMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>()), Times.Never);
@@ -181,7 +221,7 @@ namespace BusinessLogic.Tests
                 .ReturnsAsync((Torneo?)null);
 
             // Act & Assert
-            await Assert.ThrowsAsync<NotFoundException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
+            await Assert.ThrowsAsync<TorneoNotFoundException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
 
             _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
             _partidoRepositoryMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<Partido>>()), Times.Never);
@@ -199,7 +239,7 @@ namespace BusinessLogic.Tests
                 Disciplina = Disciplina.ESports,
                 Modalidad = Modalidad.EliminacionDirecta,
                 CupoMaximo = 4,
-                Estado = EstadoTorneo.Abierto,
+                Estado = EstadoTorneo.InscripcionesCerradas,
                 Equipos = new List<Equipo>
                 {
                     new Equipo { Id = Guid.NewGuid(), Nombre = "Clan Alfa", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
@@ -468,16 +508,16 @@ namespace BusinessLogic.Tests
         }
 
         [Fact]
-        public async Task GenerarFixtureAsync_WhenTeamsBelowFour_ThrowsEquiposInsuficientesException()
+        public async Task GenerarFixtureAsync_WhenEliminacionDirectaTeamsBelowFour_ThrowsTorneoCupoMinimoNoAlcanzadoException()
         {
-            // Arrange (CU-16 Flujo 3c)
+            // Arrange (Criterio 2.2: EliminacionDirecta requiere mínimo 4 equipos confirmados -> 409 Conflict)
             var torneoId = Guid.NewGuid();
             var torneo = new Torneo
             {
                 Id = torneoId,
-                Nombre = "Torneo Pocos Equipos",
+                Nombre = "Copa Pocos Equipos",
                 Disciplina = Disciplina.Futbol,
-                Modalidad = Modalidad.Liga,
+                Modalidad = Modalidad.EliminacionDirecta,
                 CupoMaximo = 8,
                 Estado = EstadoTorneo.InscripcionesCerradas,
                 Equipos = new List<Equipo>
@@ -491,14 +531,15 @@ namespace BusinessLogic.Tests
             var dto = new FixtureParametrosDTO
             {
                 FechaInicio = DateTime.Today.AddDays(7),
-                FranjasHorarias = new List<string> { "14:00" },
+                FranjasHorarias = new List<string> { "14:00", "16:00" },
                 CanchasDisponibles = new List<string> { "Cancha 1" }
             };
 
             _torneoRepositoryMock.Setup(r => r.GetTorneoConEquiposAsync(torneoId)).ReturnsAsync(torneo);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<EquiposInsuficientesException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
+            var ex = await Assert.ThrowsAsync<TorneoCupoMinimoNoAlcanzadoException>(() => _fixtureService.GenerarFixtureAsync(torneoId, dto));
+            Assert.IsAssignableFrom<BusinessRuleConflictException>(ex);
             Assert.Contains("al menos 4 equipos", ex.Message, StringComparison.OrdinalIgnoreCase);
 
             _torneoRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Torneo>()), Times.Never);
@@ -647,7 +688,7 @@ namespace BusinessLogic.Tests
                 Disciplina = Disciplina.Futbol,
                 Modalidad = Modalidad.Liga,
                 CupoMaximo = 8,
-                Estado = EstadoTorneo.Abierto,
+                Estado = EstadoTorneo.InscripcionesCerradas,
                 Equipos = new List<Equipo>
                 {
                     new Equipo { Id = Guid.NewGuid(), Nombre = "Equipo A", EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado, TorneoId = torneoId },
@@ -660,7 +701,7 @@ namespace BusinessLogic.Tests
             var dto = new GenerarFixtureRequestDTO
             {
                 FechaInicio = DateTime.Today.AddDays(2),
-                Horarios = new List<string> { "14:00" },
+                Horarios = new List<string> { "14:00", "16:00" },
                 Sedes = new List<string> { "Sede 1" }
             };
 

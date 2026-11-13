@@ -58,6 +58,23 @@ namespace API.Controllers
             return NoContent();
         }
 
+        [HttpPost("{id}/cerrar-inscripciones")]
+        [HttpPatch("{id}/cerrar-inscripciones")]
+        [Authorize(Roles = "Organizador,Administrador")]
+        public async Task<IActionResult> CerrarInscripciones(Guid id)
+        {
+            var torneo = await _torneoService.CerrarInscripcionesAsync(id);
+            return Ok(torneo);
+        }
+
+        [HttpPost("{id}/fixture")]
+        [Authorize(Roles = "Organizador,Administrador")]
+        public async Task<IActionResult> CrearFixture(Guid id, [FromBody] FixtureParametrosDTO dto)
+        {
+            var response = await _fixtureService.GenerarFixtureAsync(id, dto);
+            return Created($"/api/torneos/{id}/fixture", response);
+        }
+
         [HttpPost("{id}/generar-fixture")]
         [Authorize(Roles = "Organizador,Administrador")]
         public async Task<IActionResult> GenerarFixture(Guid id, [FromBody] GenerarFixtureRequestDTO dto)

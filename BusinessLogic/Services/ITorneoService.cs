@@ -12,6 +12,7 @@ namespace BusinessLogic.Services
         Task<TorneoResponseDTO> CreateAsync(TorneoCreateDTO dto);
         Task<TorneoResponseDTO> CreateTorneoAsync(TorneoCreateDTO dto);
         Task<TorneoResponseDTO> UpdateAsync(Guid id, TorneoUpdateDTO dto);
+        Task<TorneoResponseDTO> CerrarInscripcionesAsync(Guid id);
         Task DeleteAsync(Guid id);
         Task<IEnumerable<PosicionTablaDTO>> GetPosicionesAsync(Guid torneoId);
         Task<BracketTorneoDTO> GetLlavesAsync(Guid torneoId);

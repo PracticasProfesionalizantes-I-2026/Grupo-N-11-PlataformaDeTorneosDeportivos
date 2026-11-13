@@ -285,6 +285,25 @@ namespace BusinessLogic.Services
             return MapToResponseDTO(torneo);
         }
 
+        public async Task<TorneoResponseDTO> CerrarInscripcionesAsync(Guid id)
+        {
+            if (id == Guid.Empty)
+                throw new ValidationException("El identificador del torneo no puede ser vacío.");
+
+            var torneo = await _torneoRepository.GetTorneoConEquiposAsync(id) ?? await _torneoRepository.GetByIdAsync(id);
+            if (torneo == null)
+                throw new NotFoundException($"No se encontró el torneo con ID {id}");
+
+            if (torneo.Estado != EstadoTorneo.Abierto)
+            {
+                throw new TorneoEstadoInvalidoException("Solo se pueden cerrar las inscripciones de un torneo que se encuentra en estado Abierto.");
+            }
+
+            torneo.Estado = EstadoTorneo.InscripcionesCerradas;
+            await _torneoRepository.UpdateAsync(torneo);
+            return MapToResponseDTO(torneo);
+        }
+
         public async Task DeleteAsync(Guid id)
         {
             if (id == Guid.Empty)

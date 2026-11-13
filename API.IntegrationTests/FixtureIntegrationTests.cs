@@ -24,7 +24,7 @@ namespace API.IntegrationTests
             _client = factory.CreateClient();
         }
 
-        private async Task<Torneo> CrearTorneoEnDbAsync(EstadoTorneo estado, int cantidadEquiposConfirmados)
+        private async Task<Torneo> CrearTorneoEnDbAsync(EstadoTorneo estado, int cantidadEquiposConfirmados, Modalidad modalidad = Modalidad.Liga)
         {
             using var scope = _factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -34,8 +34,8 @@ namespace API.IntegrationTests
                 Id = Guid.NewGuid(),
                 Nombre = $"Torneo Test {Guid.NewGuid()}",
                 Disciplina = Disciplina.Futbol,
-                Modalidad = Modalidad.Liga,
-                CupoMaximo = 10,
+                Modalidad = modalidad,
+                CupoMaximo = 8,
                 CostoInscripcion = 1000m,
                 Estado = estado
             };
@@ -62,7 +62,7 @@ namespace API.IntegrationTests
         public async Task GenerarFixture_Returns200OK()
         {
             // Arrange
-            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.Abierto, 4);
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 4);
             var dto = new GenerarFixtureRequestDTO
             {
                 FechaInicio = DateTime.Today.AddDays(7),
@@ -84,10 +84,97 @@ namespace API.IntegrationTests
         }
 
         [Fact]
+        public async Task GenerarFixture_LigaWithTwoConfirmedTeams_Returns200OK()
+        {
+            // Arrange (Criterio 2.2: Modalidad.Liga con 2 equipos confirmados e InscripcionesCerradas es válido)
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 2, Modalidad.Liga);
+            var dto = new GenerarFixtureRequestDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                Horarios = new List<string> { "14:00" },
+                Sedes = new List<string> { "Cancha Principal" }
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync($"/api/torneos/{torneo.Id}/generar-fixture", dto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var result = await response.Content.ReadFromJsonAsync<GenerarFixtureResponseDTO>();
+            Assert.NotNull(result);
+            Assert.Equal(1, result.TotalPartidosGenerados);
+            Assert.Equal(EstadoTorneo.EnDesarrollo.ToString(), result.EstadoTorneo);
+        }
+
+        [Fact]
+        public async Task GenerarFixture_EliminacionDirectaWithThreeTeams_Returns409Conflict()
+        {
+            // Arrange (Criterio 2.2: Modalidad.EliminacionDirecta con < 4 equipos confirmados -> 409 Conflict)
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 3, Modalidad.EliminacionDirecta);
+            var dto = new GenerarFixtureRequestDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                Horarios = new List<string> { "14:00", "16:00" },
+                Sedes = new List<string> { "Cancha Principal" }
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync($"/api/torneos/{torneo.Id}/generar-fixture", dto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GenerarFixture_WhenTorneoIsOpen_Returns409Conflict()
+        {
+            // Arrange (Criterio 2.1: Torneo en estado Abierto al intentar generar fixture -> 409 Conflict)
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.Abierto, 4, Modalidad.Liga);
+            var dto = new GenerarFixtureRequestDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                Horarios = new List<string> { "14:00", "16:00" },
+                Sedes = new List<string> { "Cancha Principal", "Cancha 2" }
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync($"/api/torneos/{torneo.Id}/generar-fixture", dto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task CerrarInscripciones_ThenGenerarFixture_Returns200OK()
+        {
+            // Arrange: Torneo inicia en estado Abierto con 2 equipos en Liga
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.Abierto, 2, Modalidad.Liga);
+
+            // Act 1: Organizador cierra inscripciones explícitamente
+            var closeResp = await _client.PostAsync($"/api/torneos/{torneo.Id}/cerrar-inscripciones", null);
+            Assert.Equal(HttpStatusCode.OK, closeResp.StatusCode);
+            var torneoCerrado = await closeResp.Content.ReadFromJsonAsync<TorneoResponseDTO>();
+            Assert.NotNull(torneoCerrado);
+            Assert.Equal(EstadoTorneo.InscripcionesCerradas.ToString(), torneoCerrado.Estado);
+
+            // Act 2: Organizador genera el fixture
+            var dto = new GenerarFixtureRequestDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                Horarios = new List<string> { "14:00" },
+                Sedes = new List<string> { "Cancha Principal" }
+            };
+            var response = await _client.PostAsJsonAsync($"/api/torneos/{torneo.Id}/generar-fixture", dto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
         public async Task GenerarFixture_WithMissingParams_Returns400BadRequest()
         {
             // Arrange
-            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.Abierto, 4);
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 4);
             var dtoInvalido = new GenerarFixtureRequestDTO
             {
                 // Sin FechaInicio, sin Horarios, sin Sedes
@@ -103,8 +190,8 @@ namespace API.IntegrationTests
         [Fact]
         public async Task GenerarFixture_WhenMinimumTeamsNotReached_Returns409Conflict()
         {
-            // Arrange (Solo 2 equipos confirmados, mínimo reglamentario es 4)
-            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.Abierto, 2);
+            // Arrange (Solo 1 equipo confirmado en Liga, mínimo reglamentario es 2)
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 1);
             var dto = new GenerarFixtureRequestDTO
             {
                 FechaInicio = DateTime.Today.AddDays(7),
@@ -161,7 +248,7 @@ namespace API.IntegrationTests
         public async Task GetFixture_Returns200OK()
         {
             // Arrange
-            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.Abierto, 4);
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 4);
             var dto = new GenerarFixtureRequestDTO
             {
                 FechaInicio = DateTime.Today.AddDays(7),

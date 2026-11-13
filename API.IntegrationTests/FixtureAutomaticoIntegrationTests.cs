@@ -159,10 +159,10 @@ namespace API.IntegrationTests
         }
 
         [Fact]
-        public async Task GenerarFixture_WhenTeamsBelowFour_Returns422UnprocessableEntity()
+        public async Task GenerarFixture_WhenEliminacionDirectaTeamsBelowFour_Returns409Conflict()
         {
-            // Arrange (CU-16 Flujo 3c HTTP - Menos de 4 equipos confirmados)
-            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 2);
+            // Arrange (Criterio 2.2: EliminacionDirecta con < 4 equipos confirmados -> 409 Conflict)
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 2, Modalidad.EliminacionDirecta);
             var dto = new FixtureParametrosDTO
             {
                 FechaInicio = DateTime.Today.AddDays(7),
@@ -174,7 +174,45 @@ namespace API.IntegrationTests
             var response = await _client.PostAsJsonAsync($"/api/torneos/{torneo.Id}/fixture", dto);
 
             // Assert
-            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GenerarFixture_WhenLigaHasTwoTeams_Returns201Created()
+        {
+            // Arrange (Criterio 2.2: Liga con 2 equipos confirmados e InscripcionesCerradas -> 201 Created)
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 2, Modalidad.Liga);
+            var dto = new FixtureParametrosDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                FranjasHorarias = new List<string> { "14:00" },
+                CanchasDisponibles = new List<string> { "Cancha 1" }
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync($"/api/torneos/{torneo.Id}/fixture", dto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GenerarFixture_WhenLigaHasOneTeam_Returns409Conflict()
+        {
+            // Arrange (Criterio 2.2: Liga con 1 equipo confirmado -> 409 Conflict)
+            var torneo = await CrearTorneoEnDbAsync(EstadoTorneo.InscripcionesCerradas, 1, Modalidad.Liga);
+            var dto = new FixtureParametrosDTO
+            {
+                FechaInicio = DateTime.Today.AddDays(7),
+                FranjasHorarias = new List<string> { "14:00" },
+                CanchasDisponibles = new List<string> { "Cancha 1" }
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync($"/api/torneos/{torneo.Id}/fixture", dto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         }
 
         [Fact]

@@ -40,7 +40,7 @@ namespace API.IntegrationTests
                 CupoMaximo = cantidadEquipos,
                 CostoInscripcion = 0m,
                 EsPago = false,
-                Estado = EstadoTorneo.Abierto
+                Estado = EstadoTorneo.InscripcionesCerradas
             };
 
             db.Torneos.Add(torneo);

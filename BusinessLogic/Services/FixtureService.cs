@@ -28,182 +28,15 @@ namespace BusinessLogic.Services
 
         public async Task<GenerarFixtureResponseDTO> GenerarFixtureAsync(Guid torneoId, GenerarFixtureRequestDTO dto)
         {
-            if (torneoId == Guid.Empty)
-            {
-                throw new ValidationException("El identificador del torneo no puede ser vacío.");
-            }
-
-            if (dto == null)
-            {
-                throw new ValidationException("Los parámetros para generar el fixture son obligatorios.");
-            }
-
-            var validationErrors = dto.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(dto)).ToList();
-            if (validationErrors.Count > 0)
-            {
-                throw new ValidationException(validationErrors[0].ErrorMessage ?? "Parámetros de fixture inválidos.");
-            }
-
-            var torneo = await _torneoRepository.GetTorneoConEquiposAsync(torneoId);
-            if (torneo == null)
-            {
-                // Fallback to GetByIdAsync if not found with includes
-                torneo = await _torneoRepository.GetByIdAsync(torneoId);
-            }
-
-            if (torneo == null)
-            {
-                throw new NotFoundException($"No se encontró el torneo con ID {torneoId}");
-            }
-
-            // Validar estado del torneo: debe estar Abierto o Inscripciones Cerradas y sin fixture previo (Flujo 3b)
-            if (torneo.Estado != EstadoTorneo.Abierto && torneo.Estado != EstadoTorneo.InscripcionesCerradas)
-            {
-                throw new TorneoEstadoInvalidoException("El torneo debe encontrarse en estado Abierto o Inscripciones Cerradas para generar el fixture.");
-            }
-
-            if (torneo.Partidos != null && torneo.Partidos.Count > 0)
-            {
-                throw new TorneoEstadoInvalidoException("El torneo ya tiene un fixture generado.");
-            }
-
-            // Validar cupo mínimo de equipos confirmados (Flujo 3a)
-            var equiposConfirmados = (torneo.Equipos ?? new List<Equipo>())
-                .Where(e => e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado)
-                .ToList();
-
-            if (equiposConfirmados.Count < 4)
-            {
-                throw new TorneoCupoMinimoNoAlcanzadoException("No se puede generar el fixture. No se alcanza el mínimo de equipos requeridos.");
-            }
-
-            // Obtener listas de horarios y sedes normalizadas
-            var rawHorarios = (dto.Horarios != null && dto.Horarios.Count > 0)
-                ? dto.Horarios
-                : (dto.FranjasHorarias != null && dto.FranjasHorarias.Count > 0 ? dto.FranjasHorarias : new List<string> { "10:00" });
-
-            var rawSedes = (dto.Sedes != null && dto.Sedes.Count > 0)
-                ? dto.Sedes
-                : (dto.CanchasDisponibles != null && dto.CanchasDisponibles.Count > 0 ? dto.CanchasDisponibles : new List<string> { "Cancha 1" });
-
-            var horarios = rawHorarios.Select(h => h.Trim()).ToList();
-            var sedes = rawSedes.Select(s => s.Trim()).ToList();
-
-            var fechaBase = dto.FechaInicio ?? DateTime.Today.AddDays(1);
-            var partidosGenerados = new List<Partido>();
-
-            if (torneo.Modalidad == Modalidad.Liga)
-            {
-                // Round-Robin (Todos contra todos)
-                var teams = new List<Equipo?>(equiposConfirmados);
-                if (teams.Count % 2 != 0)
-                {
-                    teams.Add(null); // Bye
-                }
-
-                int n = teams.Count;
-                int totalRondas = n - 1;
-                int partidosPorRonda = n / 2;
-
-                for (int r = 0; r < totalRondas; r++)
-                {
-                    // Regla RN-09: Un partido por día calendario por equipo (cada ronda en un día distinto)
-                    var fechaRonda = fechaBase.Date.AddDays(r);
-                    int partidoIndiceEnRonda = 0;
-
-                    for (int i = 0; i < partidosPorRonda; i++)
-                    {
-                        var local = teams[i];
-                        var visitante = teams[n - 1 - i];
-
-                        if (local != null && visitante != null)
-                        {
-                            var horarioStr = horarios[partidoIndiceEnRonda % horarios.Count];
-                            var sedeStr = sedes[partidoIndiceEnRonda % sedes.Count];
-                            var fechaHora = CombinarFechaYHora(fechaRonda, horarioStr, partidoIndiceEnRonda);
-
-                            partidosGenerados.Add(new Partido
-                            {
-                                Id = Guid.NewGuid(),
-                                TorneoId = torneo.Id,
-                                EquipoLocalId = local.Id,
-                                EquipoVisitanteId = visitante.Id,
-                                FechaHora = fechaHora,
-                                Sede = sedeStr,
-                                Ronda = r + 1,
-                                Estado = EstadoPartido.Pendiente
-                            });
-
-                            partidoIndiceEnRonda++;
-                        }
-                    }
-
-                    // Rotación estándar Round-Robin (fija el primero, rota el resto)
-                    var ultimo = teams[n - 1];
-                    teams.RemoveAt(n - 1);
-                    teams.Insert(1, ultimo);
-                }
-            }
-            else
-            {
-                // Eliminación Directa: cruces de primera ronda
-                int cantidad = equiposConfirmados.Count;
-                int cruces = cantidad / 2;
-                var fechaRonda = fechaBase.Date;
-
-                for (int i = 0; i < cruces; i++)
-                {
-                    var local = equiposConfirmados[i * 2];
-                    var visitante = equiposConfirmados[i * 2 + 1];
-
-                    var horarioStr = horarios[i % horarios.Count];
-                    var sedeStr = sedes[i % sedes.Count];
-                    var fechaHora = CombinarFechaYHora(fechaRonda, horarioStr, i);
-
-                    partidosGenerados.Add(new Partido
-                    {
-                        Id = Guid.NewGuid(),
-                        TorneoId = torneo.Id,
-                        EquipoLocalId = local.Id,
-                        EquipoVisitanteId = visitante.Id,
-                        FechaHora = fechaHora,
-                        Sede = sedeStr,
-                        Ronda = 1,
-                        Estado = EstadoPartido.Pendiente
-                    });
-                }
-            }
-
-            // RN-08: Cierre definitivo de inscripción del torneo y cambio de estado a "En Desarrollo"
-            if (_unitOfWork != null)
-            {
-                await _unitOfWork.BeginTransactionAsync();
-                try
-                {
-                    torneo.Estado = EstadoTorneo.EnDesarrollo;
-                    await _torneoRepository.UpdateAsync(torneo);
-                    await _partidoRepository.AddRangeAsync(partidosGenerados);
-                    await _unitOfWork.CommitTransactionAsync();
-                }
-                catch
-                {
-                    await _unitOfWork.RollbackTransactionAsync();
-                    throw;
-                }
-            }
-            else
-            {
-                torneo.Estado = EstadoTorneo.EnDesarrollo;
-                await _torneoRepository.UpdateAsync(torneo);
-                await _partidoRepository.AddRangeAsync(partidosGenerados);
-            }
-
-            var nombresEquipos = equiposConfirmados.ToDictionary(e => e.Id, e => e.Nombre);
-
-            return MapToResponseDTO(torneo, partidosGenerados, nombresEquipos);
+            return await GenerarFixtureUnificadoAsync(torneoId, dto);
         }
 
         public async Task<FixtureResponseDTO> GenerarFixtureAsync(Guid torneoId, FixtureParametrosDTO dto)
+        {
+            return await GenerarFixtureUnificadoAsync(torneoId, dto);
+        }
+
+        private async Task<FixtureResponseDTO> GenerarFixtureUnificadoAsync(Guid torneoId, GenerarFixtureRequestDTO dto)
         {
             if (torneoId == Guid.Empty)
             {
@@ -225,13 +58,13 @@ namespace BusinessLogic.Services
 
             if (torneo == null)
             {
-                throw new TorneoNotFoundException("El torneo especificado no existe");
+                throw new TorneoNotFoundException($"No se encontró el torneo con ID {torneoId}");
             }
 
-            // Validar estado del torneo: debe estar estrictamente en InscripcionesCerradas (Flujo 3b)
+            // Criterio 2.1: Validar estado estricto del torneo (InscripcionesCerradas)
             if (torneo.Estado != EstadoTorneo.InscripcionesCerradas)
             {
-                throw new TorneoEstadoInvalidoException("El fixture solo puede generarse cuando el torneo se encuentra en estado Inscripciones Cerradas");
+                throw new TorneoEstadoInvalidoException("El fixture solo puede generarse cuando el torneo se encuentra en estado Inscripciones Cerradas.");
             }
 
             if (torneo.Partidos != null && torneo.Partidos.Count > 0)
@@ -239,18 +72,28 @@ namespace BusinessLogic.Services
                 throw new TorneoEstadoInvalidoException("El torneo ya tiene un fixture generado.");
             }
 
-            // Validar cupo mínimo de 4 equipos confirmados (Flujo 3c)
+            // Criterio 2.2: Validar cupo mínimo de equipos confirmados según modalidad (Liga >= 2, EliminacionDirecta >= 4)
             var equiposConfirmados = (torneo.Equipos ?? new List<Equipo>())
                 .Where(e => e.EstadoInscripcion == EstadoInscripcion.InscritoYConfirmado)
                 .ToList();
 
-            if (equiposConfirmados.Count < 4)
+            int cupoMinimo = torneo.Modalidad == Modalidad.Liga ? 2 : 4;
+            if (equiposConfirmados.Count < cupoMinimo)
             {
-                throw new EquiposInsuficientesException("Se requieren al menos 4 equipos confirmados para generar el fixture");
+                throw new TorneoCupoMinimoNoAlcanzadoException(
+                    $"No se puede generar el fixture. Se requieren al menos {cupoMinimo} equipos confirmados para la modalidad {torneo.Modalidad} (mínimo de equipos no alcanzado).");
             }
 
-            var canchas = (dto.CanchasDisponibles ?? new List<string>()).Select(c => c.Trim()).ToList();
-            var franjas = (dto.FranjasHorarias ?? new List<string>()).Select(f => f.Trim()).ToList();
+            var rawHorarios = (dto.Horarios != null && dto.Horarios.Count > 0)
+                ? dto.Horarios
+                : (dto.FranjasHorarias ?? new List<string>());
+
+            var rawSedes = (dto.Sedes != null && dto.Sedes.Count > 0)
+                ? dto.Sedes
+                : (dto.CanchasDisponibles ?? new List<string>());
+
+            var franjas = rawHorarios.Select(f => f.Trim()).ToList();
+            var canchas = rawSedes.Select(c => c.Trim()).ToList();
             int capacidadPorDia = canchas.Count * franjas.Count;
 
             if (capacidadPorDia <= 0)
@@ -324,7 +167,7 @@ namespace BusinessLogic.Services
                         }
                     }
 
-                    // Rotación Round-Robin
+                    // Rotación estándar Round-Robin (fija el primero, rota el resto)
                     var ultimo = teams[n - 1];
                     teams.RemoveAt(n - 1);
                     teams.Insert(1, ultimo);
@@ -332,7 +175,7 @@ namespace BusinessLogic.Services
             }
             else
             {
-                // Eliminación Directa con cálculo de Byes
+                // Eliminación Directa con cálculo de Byes hacia la siguiente potencia de 2
                 int N = equiposConfirmados.Count;
                 int p = NextPowerOfTwo(N);
                 int byes = p - N;
@@ -376,7 +219,7 @@ namespace BusinessLogic.Services
                 }
             }
 
-            // RN-08: Bloqueo permanente de inscripciones y pase a "En Desarrollo"
+            // Criterio 2.3 y RN-08: Bloqueo permanente de inscripciones y pase a "En Desarrollo" bajo transacción ACID
             if (_unitOfWork != null)
             {
                 await _unitOfWork.BeginTransactionAsync();
@@ -412,6 +255,7 @@ namespace BusinessLogic.Services
                 TotalJornadas = totalJornadas,
                 CantidadPartidosProgramados = partidosGenerados.Count,
                 TotalPartidosProgramados = partidosGenerados.Count,
+                TotalPartidosGenerados = partidosGenerados.Count,
                 FechaEstimadaFinalizacion = fechaFin,
                 Partidos = partidosGenerados.Select(p => MapToPartidoResponseDTO(p, nombresEquipos)).ToList(),
                 Descansos = descansos,
@@ -441,21 +285,6 @@ namespace BusinessLogic.Services
 
             var partidos = await _partidoRepository.GetPartidosByTorneoIdAsync(torneoId);
             return partidos.Select(MapToPartidoResponseDTO).ToList();
-        }
-
-        private static GenerarFixtureResponseDTO MapToResponseDTO(
-            Torneo torneo, 
-            List<Partido> partidos, 
-            Dictionary<Guid, string> nombresEquipos)
-        {
-            return new GenerarFixtureResponseDTO
-            {
-                TorneoId = torneo.Id,
-                Mensaje = "Fixture generado exitosamente y fase de inscripciones cerrada.",
-                EstadoTorneo = torneo.Estado.ToString(),
-                TotalPartidosGenerados = partidos.Count,
-                Partidos = partidos.Select(p => MapToPartidoResponseDTO(p, nombresEquipos)).ToList()
-            };
         }
 
         private static PartidoResponseDTO MapToPartidoResponseDTO(Partido p)

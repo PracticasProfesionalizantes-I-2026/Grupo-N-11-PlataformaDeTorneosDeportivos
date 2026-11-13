@@ -125,7 +125,7 @@ namespace API.IntegrationTests
                     Disciplina = Disciplina.Futbol,
                     Modalidad = Modalidad.Liga,
                     CupoMaximo = 4,
-                    Estado = EstadoTorneo.Abierto
+                    Estado = EstadoTorneo.InscripcionesCerradas
                 };
 
                 var equipos = new List<Equipo>
@@ -149,7 +149,7 @@ namespace API.IntegrationTests
                 var dto = new GenerarFixtureRequestDTO
                 {
                     FechaInicio = DateTime.Today.AddDays(1),
-                    Horarios = new List<string> { "15:00" },
+                    Horarios = new List<string> { "15:00", "17:00" },
                     Sedes = new List<string> { "Estadio Principal" }
                 };
 
@@ -165,10 +165,10 @@ namespace API.IntegrationTests
                 var partidosGuardados = await context.Partidos.Where(p => p.TorneoId == torneoId).CountAsync();
                 Assert.Equal(0, partidosGuardados);
 
-                // 2. El torneo debe mantener su estado 'Abierto' original (no 'EnDesarrollo')
+                // 2. El torneo debe mantener su estado 'InscripcionesCerradas' original (no 'EnDesarrollo')
                 var torneoRecuperado = await context.Torneos.FindAsync(torneoId);
                 Assert.NotNull(torneoRecuperado);
-                Assert.Equal(EstadoTorneo.Abierto, torneoRecuperado.Estado);
+                Assert.Equal(EstadoTorneo.InscripcionesCerradas, torneoRecuperado.Estado);
             }
         }
 
