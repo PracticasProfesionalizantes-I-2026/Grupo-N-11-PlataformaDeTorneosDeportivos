@@ -152,16 +152,5 @@ namespace BusinessLogic.Services
                 Clicks = p.Clicks
             };
         }
-
-        private static PublicidadClickResponseDTO MapToClickResponseDTO(Publicidad p)
-        {
-            return new PublicidadClickResponseDTO
-            {
-                BannerId = p.Id,
-                UrlDestino = p.UrlDestino,
-                TotalClicks = p.Clicks,
-                Mensaje = "Click registrado exitosamente."
-            };
-        }
     }
 }

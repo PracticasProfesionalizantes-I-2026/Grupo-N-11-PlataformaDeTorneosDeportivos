@@ -39,7 +39,9 @@ namespace API
                 });
 
             // Authentication & Authorization
-            var secretKey = builder.Configuration["Jwt:SecretKey"] ?? "ClaveSecretaSuperSeguraParaTorneosDeportivos2026";
+            var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
+                ?? builder.Configuration["Jwt:SecretKey"]
+                ?? "ClaveSecretaSuperSeguraParaTorneosDeportivos2026";
             var keyBytes = Encoding.UTF8.GetBytes(secretKey);
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -59,8 +61,12 @@ namespace API
             builder.Services.AddAuthorization();
 
             // DbContext
+            var connectionString = Environment.GetEnvironmentVariable("TORNEOS_CONNECTION_STRING")
+                ?? builder.Configuration.GetConnectionString("DefaultConnection")
+                ?? "Data Source=torneos.db";
+
             builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlite("Data Source=torneos.db"));
+                options.UseSqlite(connectionString));
 
             // DI Repositories
             builder.Services.AddScoped<ITorneoRepository, TorneoRepository>();

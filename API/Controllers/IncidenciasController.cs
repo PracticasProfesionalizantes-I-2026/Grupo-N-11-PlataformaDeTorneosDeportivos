@@ -18,6 +18,14 @@ namespace API.Controllers
             _incidenciaService = incidenciaService;
         }
 
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetByPartidoId(Guid partidoId)
+        {
+            var incidencias = await _incidenciaService.GetByPartidoIdAsync(partidoId);
+            return Ok(incidencias);
+        }
+
         [HttpPost]
         [Authorize(Roles = "Veedor,Organizador,Administrador")]
         public async Task<IActionResult> RegistrarIncidencia(Guid partidoId, [FromBody] IncidenciaCreateDTO dto)

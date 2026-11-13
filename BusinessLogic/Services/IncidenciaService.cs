@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DataAccess.Entities;
@@ -112,20 +113,20 @@ namespace BusinessLogic.Services
                 throw new JugadorNoAsignadoException("El jugador no pertenece al equipo indicado en este partido");
             }
 
-            // 3d. Verificar inhabilitación disciplinaria previa
-            if (jugador.Inhabilitado)
-            {
-                throw new JugadorInhabilitadoException("El jugador seleccionado se encuentra inhabilitado para este partido por sanción previa");
-            }
-
             // 3e. RN-07: Verificar si el jugador ya se encuentra expulsado en este partido
-            var incidenciasPrevias = (await _incidenciaRepository.GetByPartidoYJugadorAsync(partidoId, dto.JugadorId)).ToList();
+            var incidenciasPrevias = (await _incidenciaRepository.GetByPartidoYJugadorAsync(partidoId, dto.JugadorId))?.ToList() ?? new List<Incidencia>();
             bool yaExpulsado = incidenciasPrevias.Any(i => i.TipoIncidencia == TipoIncidencia.TarjetaRoja) ||
                                incidenciasPrevias.Count(i => i.TipoIncidencia == TipoIncidencia.TarjetaAmarilla) >= 2;
 
             if (yaExpulsado)
             {
                 throw new JugadorExpulsadoException("No es posible registrar incidencias para un jugador expulsado (RN-07)");
+            }
+
+            // 3d. Verificar inhabilitación disciplinaria previa (suspensión de fechas anteriores)
+            if (jugador.Inhabilitado)
+            {
+                throw new JugadorInhabilitadoException("El jugador seleccionado se encuentra inhabilitado para este partido por sanción previa");
             }
 
             // RN-07: Evaluar si la nueva incidencia provoca expulsión
@@ -141,6 +142,12 @@ namespace BusinessLogic.Services
                 {
                     quedaExpulsado = true; // Segunda amarilla -> Expulsión inmediata
                 }
+            }
+
+            if (quedaExpulsado)
+            {
+                jugador.Inhabilitado = true;
+                await _jugadorRepository.UpdateAsync(jugador);
             }
 
             // Actualización de marcador parcial si corresponde a Gol o Punto
@@ -177,6 +184,35 @@ namespace BusinessLogic.Services
                 : (partido.EquipoVisitante?.Nombre ?? "Equipo Visitante");
 
             return MapToResponseDTO(incidencia, partido, jugador, equipoNombre, quedaExpulsado);
+        }
+
+        public async Task<IEnumerable<IncidenciaResponseDTO>> GetByPartidoIdAsync(Guid partidoId)
+        {
+            if (partidoId == Guid.Empty)
+            {
+                throw new ValidationException("El identificador del partido no puede ser vacío.");
+            }
+
+            var partido = await _partidoRepository.GetByIdWithTorneoAndEquiposAsync(partidoId)
+                ?? await _partidoRepository.GetByIdAsync(partidoId);
+
+            if (partido == null)
+            {
+                throw new PartidoNotFoundException("El partido especificado no existe");
+            }
+
+            var incidencias = (await _incidenciaRepository.GetByPartidoIdAsync(partidoId))?.ToList() ?? new List<Incidencia>();
+            return incidencias.Select(i =>
+            {
+                string equipoNombre = i.Equipo?.Nombre
+                    ?? (i.EquipoId == partido.EquipoLocalId
+                        ? (partido.EquipoLocal?.Nombre ?? "Equipo Local")
+                        : (partido.EquipoVisitante?.Nombre ?? "Equipo Visitante"));
+
+                var jugador = i.Jugador ?? new Jugador { Id = i.JugadorId, Nombre = "Jugador", Apellido = string.Empty };
+                bool expulsado = i.TipoIncidencia == TipoIncidencia.TarjetaRoja;
+                return MapToResponseDTO(i, partido, jugador, equipoNombre, expulsado);
+            }).ToList();
         }
 
         private static IncidenciaResponseDTO MapToResponseDTO(

@@ -225,5 +225,58 @@ namespace API.IntegrationTests
             // Assert
             Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         }
+
+        [Fact]
+        public async Task GetIncidenciasByPartido_Returns200OK()
+        {
+            var partidoId = Guid.NewGuid();
+            var torneoId = Guid.NewGuid();
+            var localId = Guid.NewGuid();
+            var visitanteId = Guid.NewGuid();
+            var jugadorId = Guid.NewGuid();
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var torneo = new Torneo { Id = torneoId, Nombre = "Torneo Consulta Incidencias", Disciplina = Disciplina.Futbol, Modalidad = Modalidad.Liga, CupoMaximo = 8, CostoInscripcion = 0 };
+                var local = new Equipo { Id = localId, Nombre = "Local Consulta", TorneoId = torneoId, EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado };
+                var visitante = new Equipo { Id = visitanteId, Nombre = "Visita Consulta", TorneoId = torneoId, EstadoInscripcion = EstadoInscripcion.InscritoYConfirmado };
+                var jugador = new Jugador { Id = jugadorId, Nombre = "Pedro", Apellido = "Gomez", Dni = "33445566", EquipoId = localId };
+                var partido = new Partido
+                {
+                    Id = partidoId,
+                    TorneoId = torneoId,
+                    EquipoLocalId = localId,
+                    EquipoVisitanteId = visitanteId,
+                    FechaHora = DateTime.Today.AddHours(18),
+                    Sede = "Cancha Principal",
+                    Ronda = 1,
+                    Estado = EstadoPartido.EnJuego
+                };
+
+                db.Torneos.Add(torneo);
+                db.Equipos.AddRange(local, visitante);
+                db.Jugadores.Add(jugador);
+                db.Partidos.Add(partido);
+                db.Incidencias.Add(new Incidencia
+                {
+                    Id = Guid.NewGuid(),
+                    PartidoId = partidoId,
+                    EquipoId = localId,
+                    JugadorId = jugadorId,
+                    TipoIncidencia = TipoIncidencia.Gol,
+                    Minuto = 12,
+                    Observaciones = "Gol de cabeza"
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var response = await _client.GetAsync($"/api/partidos/{partidoId}/incidencias");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var list = await response.Content.ReadFromJsonAsync<System.Collections.Generic.List<IncidenciaResponseDTO>>();
+            Assert.NotNull(list);
+            Assert.Single(list);
+            Assert.Equal("Gol", list[0].TipoIncidencia);
+        }
     }
 }

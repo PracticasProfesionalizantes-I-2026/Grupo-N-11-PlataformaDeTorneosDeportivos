@@ -129,5 +129,45 @@ namespace API.IntegrationTests
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
+
+        [Fact]
+        public async Task CreatePublicidad_WithValidPayload_Returns201Created()
+        {
+            var torneoId = Guid.NewGuid();
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Torneos.Add(new Torneo
+                {
+                    Id = torneoId,
+                    Nombre = $"Torneo Sponsor {Guid.NewGuid():N}",
+                    Disciplina = Disciplina.Futbol,
+                    Modalidad = Modalidad.Liga,
+                    CupoMaximo = 8,
+                    Estado = EstadoTorneo.Abierto
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var dto = new PublicidadCreateDTO
+            {
+                TorneoId = torneoId,
+                Titulo = "Nuevo Sponsor Oficial",
+                NombrePatrocinador = "Adidas Pro",
+                ImagenUrl = "https://adidas.com/banner.png",
+                UrlDestino = "https://adidas.com",
+                Ubicacion = "Superior",
+                Activo = true
+            };
+
+            var response = await _client.PostAsJsonAsync($"/api/torneos/{torneoId}/publicidad", dto);
+
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            var created = await response.Content.ReadFromJsonAsync<PublicidadResponseDTO>();
+            Assert.NotNull(created);
+            Assert.Equal("Nuevo Sponsor Oficial", created.Titulo);
+            Assert.Equal("Adidas Pro", created.NombrePatrocinador);
+            Assert.Equal(torneoId, created.TorneoId);
+        }
     }
 }

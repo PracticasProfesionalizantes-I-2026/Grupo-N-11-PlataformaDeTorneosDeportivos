@@ -52,6 +52,24 @@ namespace DataAccess.Data
             }
             context.SaveChanges();
 
+            if (!context.Publicidades.Any())
+            {
+                context.Publicidades.Add(new Publicidad
+                {
+                    Id = Guid.NewGuid(),
+                    TorneoId = torneos[0].Id,
+                    Titulo = "Patrocinador Oficial Torneo de Verano",
+                    NombrePatrocinador = "Deportes Global",
+                    ImagenUrl = "https://deportesglobal.com/banners/verano.png",
+                    UrlDestino = "https://deportesglobal.com",
+                    Ubicacion = "Principal",
+                    Activo = true,
+                    Impresiones = 0,
+                    Clicks = 0
+                });
+                context.SaveChanges();
+            }
+
             if (!context.Usuarios.Any())
             {
                 byte[] salt = new byte[16] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
